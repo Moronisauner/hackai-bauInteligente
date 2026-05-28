@@ -2,6 +2,7 @@ package httpapi
 
 import (
 	"net/http"
+	"sort"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/shopspring/decimal"
@@ -22,7 +23,8 @@ type AccountDTO struct {
 }
 
 // ListAccountsByUser lista as contas AVAILABLE de um cliente, cada uma com o
-// saldo reconstruído na POC_REFERENCE_DATE. Cliente sem contas → 200 [].
+// saldo reconstruído na POC_REFERENCE_DATE, ordenadas pelo saldo (maior para o
+// menor). Cliente sem contas → 200 [].
 //
 //	@Summary	Lista contas de um cliente com saldo
 //	@Tags		users
@@ -93,6 +95,12 @@ func (s *Server) ListAccountsByUser(w http.ResponseWriter, r *http.Request) {
 			BalanceReferenceDate: refDate,
 		})
 	}
+
+	// Ordena pelo saldo do maior para o menor (a query não pode ordenar pois o
+	// saldo é reconstruído em memória a partir das transações).
+	sort.SliceStable(out, func(i, j int) bool {
+		return balances[out[i].AccountID].GreaterThan(balances[out[j].AccountID])
+	})
 
 	writeJSON(w, http.StatusOK, out)
 }

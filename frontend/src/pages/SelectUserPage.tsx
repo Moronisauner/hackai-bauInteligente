@@ -40,7 +40,7 @@ export function SelectUserPage() {
   return (
     <PageShell
       title="Selecione um cliente"
-      subtitle="Clientes com contas disponíveis, ordenados por número de contas."
+      subtitle="Clientes com contas disponíveis, ordenados por nome."
       right={
         config && <ReferenceDateBadge date={formatDateBR(config.poc_reference_date)} />
       }
@@ -50,7 +50,7 @@ export function SelectUserPage() {
           type="search"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          placeholder="Buscar por user_id…"
+          placeholder="Buscar por nome…"
           className="w-full rounded-md border border-slate-300 px-4 py-2 text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
         />
       </div>
@@ -71,7 +71,7 @@ export function SelectUserPage() {
                 onClick={() => navigate(`/users/${u.user_id}`)}
                 className="flex w-full items-center justify-between px-4 py-3 text-left transition hover:bg-slate-50"
               >
-                <span className="font-mono text-sm text-slate-800">{u.user_id}</span>
+                <span className="text-sm font-medium text-slate-800">{u.nome}</span>
                 <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600">
                   {u.accounts_count} {u.accounts_count === 1 ? 'conta' : 'contas'}
                 </span>

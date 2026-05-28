@@ -19,7 +19,9 @@
       "Bash(npm --version)",
       "Bash(mise ls *)",
       "Bash(mise exec *)",
-      "Bash(mise tasks *)"
+      "Bash(mise tasks *)",
+      "Bash(docker exec hackai-postgres psql -U hackai -d hackai -t -A -F '|' -c ' *)",
+      "Read(//tmp/**)"
     ]
   }
 }

@@ -213,7 +213,7 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "type": "string",
-                        "description": "Filtro por substring do user_id",
+                        "description": "Filtro por substring do nome",
                         "name": "q",
                         "in": "query"
                     }
@@ -630,6 +630,9 @@ const docTemplate = `{
             "properties": {
                 "accounts_count": {
                     "type": "integer"
+                },
+                "nome": {
+                    "type": "string"
                 },
                 "user_id": {
                     "type": "string"

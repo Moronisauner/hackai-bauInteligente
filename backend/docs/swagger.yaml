@@ -170,6 +170,8 @@ definitions:
     properties:
       accounts_count:
         type: integer
+      nome:
+        type: string
       user_id:
         type: string
     type: object
@@ -312,7 +314,7 @@ paths:
   /users:
     get:
       parameters:
-      - description: Filtro por substring do user_id
+      - description: Filtro por substring do nome
         in: query
         name: q
         type: string

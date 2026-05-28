@@ -8,6 +8,7 @@ export type Config = {
 
 export type User = {
   user_id: string
+  nome: string
   accounts_count: number
 }
 
