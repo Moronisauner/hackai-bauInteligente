@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: hackai-postgres
+    environment:
+      POSTGRES_USER: hackai
+      POSTGRES_PASSWORD: hackai
+      POSTGRES_DB: hackai
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./initdb:/docker-entrypoint-initdb.d:ro
+      - ../raw_data:/raw_data:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U hackai -d hackai"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

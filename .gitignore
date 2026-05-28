@@ -1,2 +1,17 @@
 *.csv
 .compozy/
+
+# Backend (Go)
+backend/bin/
+backend/tmp/
+
+# Frontend (React/Vite)
+frontend/node_modules/
+frontend/dist/
+
+# Env files
+.env
+*.local
+
+# Postgres data volume
+infra/pgdata/
