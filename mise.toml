@@ -3,6 +3,11 @@ go = "latest"
 # Gerador de docs OpenAPI a partir das annotations (vide tarefa swagger abaixo).
 "go:github.com/swaggo/swag/cmd/swag" = "v1.16.4"
 
+[tasks.api]
+description = "Sobe a API HTTP (entrypoint backend/cmd/api/main.go)"
+run = "go run ./cmd/api"
+dir = "{{ config_root }}/backend"
+
 [tasks.swagger]
 description = "Regera backend/docs/swagger.{json,yaml} a partir das annotations"
 run = "cd backend && swag init --generalInfo cmd/api/main.go --output docs --parseDependency --parseInternal"
