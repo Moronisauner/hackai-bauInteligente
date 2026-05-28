@@ -15,3 +15,5 @@ frontend/dist/
 
 # Postgres data volume
 infra/pgdata/
+
+backend/api

@@ -27,14 +27,29 @@ description = "Sobe o frontend (Vite dev server, proxy /api → :8080)"
 run = "npm run dev"
 dir = "{{ config_root }}/frontend"
 
-[tasks.infra]
-description = "Sobe a infra (Postgres) via docker compose, em background, e espera ficar healthy"
+[tasks.api-test]
+description = "Roda os testes do backend Go (go test ./...)"
+run = "go test ./..."
+dir = "{{ config_root }}/backend"
+
+[tasks.db-up]
+description = "Sobe o Postgres via docker compose, em background, e espera ficar healthy"
 run = "docker compose -f infra/docker-compose.yml up -d --wait"
 dir = "{{ config_root }}"
 
+[tasks.db-down]
+description = "Para o Postgres (mantém o volume com os dados)"
+run = "docker compose -f infra/docker-compose.yml down"
+dir = "{{ config_root }}"
+
+[tasks.db-reset]
+description = "Apaga o volume e recarrega a massa do zero (down -v && up --wait)"
+run = "docker compose -f infra/docker-compose.yml down -v && docker compose -f infra/docker-compose.yml up -d --wait"
+dir = "{{ config_root }}"
+
 [tasks.up]
-description = "Stack completo: infra (docker -d) + backend (:8080) + frontend (:5173). Ctrl+C derruba os servers."
-depends = ["infra"]
+description = "Stack completo: db-up (docker -d) + backend (:8080) + frontend (:5173). Ctrl+C derruba os servers."
+depends = ["db-up"]
 dir = "{{ config_root }}"
 run = """
 set -e

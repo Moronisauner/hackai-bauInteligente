@@ -27,6 +27,35 @@ Tasks são pra ser rodadas **em ordem** dentro de cada fase. Fases podem se sobr
 3. [03-frontend/](03-frontend/) — UI React (wizard de objetivo + resultados)
 4. [04-polish/](04-polish/) — Boot banner, dev runner, smoke E2E
 
+## Como rodar localmente
+
+Comandos do dia-a-dia centralizados em [tasks do mise](../mise.toml). `mise tasks` lista todas.
+
+**Atalho (tudo de uma vez):**
+
+```sh
+mise run up      # sobe DB (docker -d) + backend (:8080) + frontend (:5173); Ctrl+C derruba os servers
+```
+
+**Passo a passo (dois terminais):**
+
+```sh
+# terminal 1 — DB + API
+mise run db-up && mise run api
+
+# terminal 2 — frontend
+mise run web
+```
+
+**Gerência do banco:**
+
+| Task                | O que faz                                    |
+| ------------------- | -------------------------------------------- |
+| `mise run db-up`    | Sobe o Postgres e espera ficar healthy       |
+| `mise run db-down`  | Para o Postgres (mantém os dados)            |
+| `mise run db-reset` | Apaga o volume e recarrega a massa do zero   |
+| `mise run api-test` | Roda os testes do backend (`go test ./...`)  |
+
 ## Documentação da API (Swagger)
 
 Com o backend de pé, a documentação navegável fica em **http://localhost:8080/swagger/**

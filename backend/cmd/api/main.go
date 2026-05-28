@@ -3,12 +3,15 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 
 	"github.com/moronisauner/hackai/backend/internal/config"
 	"github.com/moronisauner/hackai/backend/internal/db"
@@ -26,6 +29,8 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	printBootBanner(cfg.POCReferenceDate)
 
 	pingCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -62,4 +67,36 @@ func main() {
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
 	}
+}
+
+// printBootBanner imprime, antes dos logs estruturados, um banner em destaque
+// com a POC_REFERENCE_DATE em uso. Toda regra de negócio usa essa data e NÃO
+// time.Now() (PRD §8) — o banner existe pra deixar isso impossível de ignorar.
+// A largura é calculada a partir do conteúdo, então acomoda qualquer data.
+func printBootBanner(refDate time.Time) {
+	lines := []string{
+		"POC_REFERENCE_DATE = " + refDate.Format("2006-01-02"),
+		"Toda regra de negócio usa essa data,",
+		"NÃO time.Now()",
+	}
+
+	// Largura interna = maior linha (em runes, não bytes, por causa dos acentos)
+	// + 2 espaços de padding de cada lado.
+	width := 0
+	for _, l := range lines {
+		if n := utf8.RuneCountInString(l); n > width {
+			width = n
+		}
+	}
+	width += 2
+
+	top := "╔" + strings.Repeat("═", width) + "╗"
+	bottom := "╚" + strings.Repeat("═", width) + "╝"
+
+	fmt.Println(top)
+	for _, l := range lines {
+		pad := width - 1 - utf8.RuneCountInString(l)
+		fmt.Printf("║ %s%s║\n", l, strings.Repeat(" ", pad))
+	}
+	fmt.Println(bottom)
 }
