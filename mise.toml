@@ -1,3 +1,11 @@
+[env]
+# Conexão com o Postgres da POC (vide infra/docker-compose.yml).
+DATABASE_URL = "postgres://hackai:hackai@localhost:5432/hackai?sslmode=disable"
+# Data de referência da POC — TODA regra temporal usa esta data (PRD §8). Formato YYYY-MM-DD.
+POC_REFERENCE_DATE = "2025-01-01"
+# Porta HTTP do servidor (opcional, default :8080).
+HTTP_PORT = ":8080"
+
 [tools]
 go = "latest"
 # Gerador de docs OpenAPI a partir das annotations (vide tarefa swagger abaixo).
