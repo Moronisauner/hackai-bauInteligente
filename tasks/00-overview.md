@@ -26,6 +26,7 @@ Tasks são pra ser rodadas **em ordem** dentro de cada fase. Fases podem se sobr
 2. [02-backend/](02-backend/) — API Go (config → DB → endpoints → backtest)
 3. [03-frontend/](03-frontend/) — UI React (wizard de objetivo + resultados)
 4. [04-polish/](04-polish/) — Boot banner, dev runner, smoke E2E
+5. [05-allocation-rule/](05-allocation-rule/) — Refino da regra de alocação (fatia da evolução mensal da conta)
 
 ## Como rodar localmente
 

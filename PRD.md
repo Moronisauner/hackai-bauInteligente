@@ -35,10 +35,10 @@ Responder a três perguntas:
 
    Ao salvar, o sistema **cria automaticamente uma "conta baú" associada ao objetivo**. Essa conta é um cofre virtual: não existe na instituição, vive apenas no banco da POC, e é onde o saldo do objetivo se acumula mês a mês.
 4. **Selecionar contas-fonte** — usuário marca uma ou mais contas reais (de `bank_accounts`) que servirão de origem para os saques mensais. A conta baú é sempre o destino.
-5. **Distribuir percentuais** — para cada conta-fonte selecionada, usuário define **% de contribuição** (soma deve ser 100%). Sistema calcula o valor mensal em R$ por conta a partir de (valor-alvo / prazo) × %.
+5. **Distribuir percentuais** — para cada conta-fonte selecionada, usuário define o **% de contribuição da conta**: quanto da *evolução mensal* daquela conta (o quanto o saldo cresceu no mês — entradas menos saídas) será reservado para a meta. Os percentuais são **independentes por conta e não precisam somar 100%**. Como o valor reservado depende de quanto a conta crescer em cada mês, **não há um valor mensal fixo** definido na criação — a projeção só existe após o backtest.
 6. **Resumo + simulação histórica** — sistema mostra:
    - Plano consolidado (qual valor sai de qual conta, em qual dia do mês, todos com destino à conta baú)
-   - **Backtest mês a mês** rodando contra o histórico real do cliente: em cada mês, o saldo da conta-fonte na data prevista era suficiente para o saque? Quantos meses teriam sido cumpridos, quantos teriam falhado?
+   - **Backtest mês a mês** rodando contra o histórico real do cliente: em cada mês mede-se **quanto cada conta-fonte evoluiu** (entradas − saídas do mês) e reserva-se o percentual definido sobre essa evolução, limitado ao saldo disponível no dia do saque. Quantos meses teriam reservado o valor cheio, quantos parcialmente, e quantos nada (conta sem evolução ou sem saldo disponível)?
    - **Evolução da conta baú**: saldo acumulado mês a mês, mostrando a trajetória até a meta.
    - Indicador final: meta seria atingida? Quanto teria sido acumulado no baú ao fim do prazo?
 
@@ -57,21 +57,37 @@ Responder a três perguntas:
 - Validar: valor-alvo > 0, prazo entre 1 e 60 meses, data de início ≥ data mínima dos dados do cliente.
 - **Ao criar o objetivo, criar automaticamente uma `goal_vault` (conta baú) atrelada**. Saldo inicial = 0. Uma conta baú por objetivo.
 
-### RF-04 — Alocação por percentual
+### RF-04 — Alocação por percentual (fatia da evolução)
 - Para cada conta-fonte selecionada, aceitar percentual inteiro de 1 a 100.
-- **Soma deve ser exatamente 100%** — bloquear submissão caso contrário.
-- Valor mensal por conta-fonte = `round((valor_alvo / prazo_meses) * (percentual / 100), 2)`.
+- O percentual **não** é a fatia de um aporte fixo: ele define **quanto da evolução mensal da própria conta** (entradas − saídas do mês) é reservado para a meta.
+- Os percentuais são **independentes por conta** — **não precisam somar 100%**. Cada conta pode contribuir com qualquer % de 1 a 100 do seu próprio crescimento.
+- Não há valor mensal projetável na criação: o valor reservado depende de quanto cada conta evoluir em cada mês (vide RF-05).
+- `target_amount` e `duration_months` passam a ser a **meta a atingir e a janela do backtest** — o baú acumula o que as evoluções renderem, podendo bater a meta antes, depois, ou não bater.
 
 ### RF-05 — Simulação histórica (backtest)
-- Para cada mês `m` do plano, na data prevista do saque, para cada conta-fonte:
-  - Calcular saldo da conta-fonte (ver §6)
-  - Se `saldo >= valor_mensal_conta` → saque **cumprido**: registra movimento de débito sintético na conta-fonte e **crédito na conta baú** (`goal_vault_movements`)
-  - Se `saldo < valor_mensal_conta` → **mês falha para essa conta** (nada sai, nada entra no baú — não tenta cobrir com outras contas)
-- Resultado armazenado: array de movimentos `{ mes, conta_fonte_id, vault_id, status, valor_sacado }`.
+
+**Evolução do mês** de uma conta (entradas − saídas do mês de competência):
+
+```
+evolução(conta, mês) = saldo(conta, fim do mês) − saldo(conta, abertura do mês)
+```
+
+Ambos os saldos via §6. "Abertura" = primeiro instante do mês de competência; "fim" = último instante do mês de competência (captura todas as transações do mês-calendário, mesmo que o `withdrawal_day` caia no meio).
+
+Para cada mês `m` do plano, para cada conta-fonte:
+1. Calcular a evolução do mês.
+2. Se `evolução <= 0` → **`SKIPPED_NO_GROWTH`**: a conta não cresceu no mês, nada é reservado (`amount = 0`).
+3. Senão, `reserva_alvo = round(evolução × percentual / 100, 2)`.
+4. Calcular o **saldo disponível no dia do saque** = `saldo(conta, movement_date)` − reservas já feitas por essa conta nos meses anteriores do backtest (o débito sintético reduz o disponível dos meses seguintes). Então:
+   - `disponível <= 0` → **`FAILED_INSUFFICIENT_BALANCE`**: a conta evoluiu mas não há saldo disponível; reserva 0.
+   - `disponível >= reserva_alvo` → **`COMPLETED`**: reserva o alvo cheio.
+   - `0 < disponível < reserva_alvo` → **`PARTIAL`**: reserva apenas o disponível (nunca move mais do que há na conta).
+5. O valor reservado vira **crédito na conta baú** (`goal_vault_movements`). Não tenta cobrir a falha de uma conta com outra (cada alocação é avaliada isoladamente).
+- Resultado armazenado: array de movimentos `{ mes, conta_fonte_id, vault_id, status, valor_reservado }`.
 
 ### RF-06 — Visualização do resultado
-- KPIs: % de meses cumpridos, **saldo final do baú vs. meta**, conta-fonte com maior taxa de falha.
-- Tabela detalhada mês a mês: para cada mês, status por conta-fonte + saldo acumulado do baú ao final daquele mês.
+- KPIs: **% de meses cumpridos** (status `COMPLETED` sobre o total), **saldo final do baú vs. meta**, conta-fonte com maior taxa de não-cumprimento.
+- Tabela detalhada mês a mês: para cada mês, status por conta-fonte (cheio / parcial / sem evolução / sem saldo) + valor reservado + saldo acumulado do baú ao final daquele mês.
 - Gráfico de evolução do saldo do baú no tempo (linha simples).
 
 ## 6. Cálculo de saldo (decisão crítica)
@@ -136,7 +152,8 @@ CREATE TABLE goal_vault_movements (
     reference_month   DATE NOT NULL,         -- mês de competência (primeiro dia)
     movement_date     DATE NOT NULL,         -- data efetiva do saque simulado
     amount            NUMERIC(18, 2) NOT NULL,
-    status            VARCHAR(20) NOT NULL,  -- COMPLETED | FAILED_INSUFFICIENT_BALANCE
+    -- COMPLETED | PARTIAL | SKIPPED_NO_GROWTH | FAILED_INSUFFICIENT_BALANCE
+    status            VARCHAR(40) NOT NULL,
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
@@ -144,7 +161,7 @@ CREATE INDEX idx_goal_vault_movements_vault_id ON goal_vault_movements(vault_id)
 CREATE INDEX idx_goal_vault_movements_ref_month ON goal_vault_movements(reference_month);
 ```
 
-> Nota: movimentos com `status = FAILED_INSUFFICIENT_BALANCE` são persistidos com `amount = 0` para manter o histórico de tentativas. O saldo do baú considera apenas `status = COMPLETED`.
+> Nota: movimentos `SKIPPED_NO_GROWTH` (conta não evoluiu) e `FAILED_INSUFFICIENT_BALANCE` (evoluiu mas sem saldo disponível) são persistidos com `amount = 0` para manter o histórico de tentativas. `PARTIAL` guarda o valor efetivamente reservado (menor que o alvo). O saldo do baú = `SUM(amount)`, ou seja, soma de `COMPLETED` + `PARTIAL`.
 
 ## 8. Tratamento de datas (atenção redobrada)
 
@@ -175,6 +192,8 @@ Como a massa é histórica, **a aplicação não pode usar `NOW()` como referên
 - **Múltiplas moedas:** schema permite, mas a POC assume `BRL`. Filtrar `currency = 'BRL'`?
 - **Dia do saque (`withdrawal_day`):** se cair em fim de semana/feriado, antecipa, posterga, ou ignora? Proposta inicial: usa o dia exato sem ajuste — é POC.
 - **Granularidade do percentual:** inteiro (1–100) é suficiente, ou precisamos de uma casa decimal?
+- **Janela da evolução mensal (RF-05):** medimos a evolução pelo mês-calendário cheio (saldo do fim − saldo da abertura do mês de competência), independente do `withdrawal_day`. O saque/reserva ocorre no `withdrawal_day` e é limitado ao saldo disponível naquele dia. Alternativa não adotada: medir de um `withdrawal_day` ao próximo.
+- **Descasamento evolução × disponível:** a evolução considera o mês inteiro, mas o saque é no `withdrawal_day` (meio do mês). Logo uma conta pode ter evolução positiva no mês e ainda assim reservar parcial/zero se o saldo no dia do saque for menor. É o comportamento desejado (não move mais do que há disponível).
 - **Múltiplos objetivos por cliente:** suportado pelo schema, mas a UI da POC pode focar em um objetivo de cada vez para simplificar.
 
 ## 12. Próximos passos
