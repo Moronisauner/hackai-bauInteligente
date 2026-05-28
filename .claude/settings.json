@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(go get *)",
+      "Bash(export DATABASE_URL='postgres://hackai:hackai@localhost:5432/hackai?sslmode=disable' POC_REFERENCE_DATE=2025-01-01)",
+      "Bash(export DATABASE_URL='postgres://hackai:hackai@localhost:5432/hackai?sslmode=disable')",
+      "Bash(go test *)",
+      "Bash(go vet *)",
+      "Bash(curl -s localhost:8080/users)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); s=sum\\(float\\(a['monthly_amount']\\) for a in d['allocations']\\); print\\('sum monthly =',s,'target/dur =', float\\(d['target_amount']\\)/d['duration_months']\\)\")",
+      "Bash(curl -s -w \" [%{http_code}]\\\\n\" \"localhost:8080/goals/nope\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('summary.vault_balance =', d['summary']['vault_balance']\\); print\\('goal_reached =', d['summary']['goal_reached'], 'completed_pct =', d['summary']['completed_months_pct'], 'worst =', d['summary']['worst_account_id'][:12]\\)\")",
+      "Bash(python3 -c \"import sys,json; print\\('summary.vault_balance =', json.load\\(sys.stdin\\)['summary']['vault_balance']\\)\")",
+      "Bash(swag --version)",
+      "Bash(swag init *)",
+      "Bash(mise run *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(mise install *)"
+    ]
+  }
+}

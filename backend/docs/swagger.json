@@ -1,0 +1,646 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Backend da POC do centralizador de saldo. Toda regra temporal usa POC_REFERENCE_DATE.",
+        "title": "Centralizador de Saldo (POC) — API",
+        "contact": {},
+        "version": "0.1"
+    },
+    "basePath": "/",
+    "paths": {
+        "/config": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "infra"
+                ],
+                "summary": "Configuração pública da POC",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.ConfigDTO"
+                        }
+                    }
+                }
+            }
+        },
+        "/goals/{goalID}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "goals"
+                ],
+                "summary": "Detalhe de um objetivo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do objetivo",
+                        "name": "goalID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.GoalDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/goals/{goalID}/backtest": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "backtest"
+                ],
+                "summary": "Consulta o resultado do backtest",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do objetivo",
+                        "name": "goalID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.BacktestResultDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "backtest"
+                ],
+                "summary": "Executa o backtest de um objetivo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do objetivo",
+                        "name": "goalID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.BacktestResultDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/healthz": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "infra"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Lista clientes",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Filtro por substring do user_id",
+                        "name": "q",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_httpapi.UserDTO"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userID}/accounts": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "users"
+                ],
+                "summary": "Lista contas de um cliente com saldo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do cliente",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_httpapi.AccountDTO"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userID}/goals": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "goals"
+                ],
+                "summary": "Lista objetivos de um cliente",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do cliente",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/internal_httpapi.GoalSummaryDTO"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "goals"
+                ],
+                "summary": "Cria um objetivo (goal + vault + allocations)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do cliente",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Dados do objetivo",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.CreateGoalRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.CreateGoalResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "internal_httpapi.AccountDTO": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "balance": {
+                    "type": "string",
+                    "example": "1234.56"
+                },
+                "balance_reference_date": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                },
+                "branch_code": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "check_digit": {
+                    "type": "string"
+                },
+                "compe_code": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "string"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.AllocationRequest": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
+        "internal_httpapi.BacktestMovementDTO": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "amount": {
+                    "type": "string",
+                    "example": "500.00"
+                },
+                "reference_month": {
+                    "type": "string",
+                    "example": "2025-06-01"
+                },
+                "status": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.BacktestResultDTO": {
+            "type": "object",
+            "properties": {
+                "movements": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.BacktestMovementDTO"
+                    }
+                },
+                "summary": {
+                    "$ref": "#/definitions/internal_httpapi.BacktestSummaryDTO"
+                },
+                "vault_evolution": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.VaultEvolutionDTO"
+                    }
+                }
+            }
+        },
+        "internal_httpapi.BacktestSummaryDTO": {
+            "type": "object",
+            "properties": {
+                "completed_count": {
+                    "type": "integer"
+                },
+                "completed_months_pct": {
+                    "type": "number",
+                    "example": 0.83
+                },
+                "failed_count": {
+                    "type": "integer"
+                },
+                "goal_reached": {
+                    "type": "boolean"
+                },
+                "target_amount": {
+                    "type": "string",
+                    "example": "10000.00"
+                },
+                "vault_balance": {
+                    "type": "string",
+                    "example": "8400.00"
+                },
+                "worst_account_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.ConfigDTO": {
+            "type": "object",
+            "properties": {
+                "poc_reference_date": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                }
+            }
+        },
+        "internal_httpapi.CreateGoalRequest": {
+            "type": "object",
+            "properties": {
+                "allocations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.AllocationRequest"
+                    }
+                },
+                "duration_months": {
+                    "type": "integer",
+                    "example": 12
+                },
+                "name": {
+                    "type": "string",
+                    "example": "Viagem"
+                },
+                "start_date": {
+                    "type": "string",
+                    "example": "2025-01-01"
+                },
+                "target_amount": {
+                    "type": "string",
+                    "example": "10000.00"
+                },
+                "withdrawal_day": {
+                    "type": "integer",
+                    "example": 5
+                }
+            }
+        },
+        "internal_httpapi.CreateGoalResponse": {
+            "type": "object",
+            "properties": {
+                "goal_id": {
+                    "type": "string"
+                },
+                "vault_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.GoalAllocationDTO": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "monthly_amount": {
+                    "type": "string",
+                    "example": "416.67"
+                },
+                "number": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "integer"
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.GoalDTO": {
+            "type": "object",
+            "properties": {
+                "allocations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.GoalAllocationDTO"
+                    }
+                },
+                "duration_months": {
+                    "type": "integer"
+                },
+                "goal_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "target_amount": {
+                    "type": "string"
+                },
+                "user_id": {
+                    "type": "string"
+                },
+                "vault_id": {
+                    "type": "string"
+                },
+                "withdrawal_day": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_httpapi.GoalSummaryDTO": {
+            "type": "object",
+            "properties": {
+                "duration_months": {
+                    "type": "integer"
+                },
+                "goal_id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "start_date": {
+                    "type": "string"
+                },
+                "target_amount": {
+                    "type": "string"
+                },
+                "withdrawal_day": {
+                    "type": "integer"
+                }
+            }
+        },
+        "internal_httpapi.UserDTO": {
+            "type": "object",
+            "properties": {
+                "accounts_count": {
+                    "type": "integer"
+                },
+                "user_id": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.VaultEvolutionDTO": {
+            "type": "object",
+            "properties": {
+                "balance": {
+                    "type": "string",
+                    "example": "1000.00"
+                },
+                "month": {
+                    "type": "string",
+                    "example": "2025-06-01"
+                }
+            }
+        }
+    }
+}

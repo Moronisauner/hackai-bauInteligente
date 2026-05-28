@@ -32,7 +32,8 @@ CREATE TABLE goal_vault_movements (
     reference_month   DATE NOT NULL,
     movement_date     DATE NOT NULL,
     amount            NUMERIC(18, 2) NOT NULL,
-    status            VARCHAR(20) NOT NULL CHECK (status IN ('COMPLETED', 'FAILED_INSUFFICIENT_BALANCE')),
+    -- 'FAILED_INSUFFICIENT_BALANCE' tem 27 chars; VARCHAR(40) dá folga.
+    status            VARCHAR(40) NOT NULL CHECK (status IN ('COMPLETED', 'FAILED_INSUFFICIENT_BALANCE')),
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

@@ -27,6 +27,12 @@ Tasks são pra ser rodadas **em ordem** dentro de cada fase. Fases podem se sobr
 3. [03-frontend/](03-frontend/) — UI React (wizard de objetivo + resultados)
 4. [04-polish/](04-polish/) — Boot banner, dev runner, smoke E2E
 
+## Documentação da API (Swagger)
+
+Com o backend de pé, a documentação navegável fica em **http://localhost:8080/swagger/**
+(spec em `/swagger/doc.json`). Para regerar os arquivos `backend/docs/swagger.{json,yaml}`
+a partir das annotations dos handlers: `mise run swagger`.
+
 ## Como executar uma task com Claude
 
 Aponte Claude pra uma task específica:
