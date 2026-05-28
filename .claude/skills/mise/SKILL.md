@@ -13,7 +13,8 @@ Versões de linguagens, runtimes e ferramentas auxiliares ficam declaradas em [m
 
 ## Stack
 
-O projeto é **Go**. O `go` resolvido sempre é o do `mise` — não confie em `go` do sistema.
+O projeto é **Go** (backend) + **Node/React** (frontend SPA Vite). Tanto o `go`
+quanto o `node`/`npm` resolvidos vêm do `mise` — não confie nos do sistema.
 
 ## Como usar
 
@@ -31,15 +32,22 @@ O projeto é **Go**. O `go` resolvido sempre é o do `mise` — não confie em `
 
 ## Estado atual
 
-O `mise.toml` ainda está vazio. Conforme o stack da POC (ver [PRD.md](../../../PRD.md)) for materializando, registre aqui — exemplo de base esperada:
+Ferramentas declaradas em [mise.toml](../../../mise.toml):
 
 ```toml
 [tools]
-go = "1.23"
-golangci-lint = "latest"
-# goimports = "latest"
-# air = "latest"          # live reload
-# sqlc = "latest"         # se for usar geração a partir do schema.sql
+go = "latest"
+node = "lts"                                        # runtime do frontend (Vite)
+"go:github.com/swaggo/swag/cmd/swag" = "v1.16.4"    # gerador de docs OpenAPI
 ```
 
-Atualize esta skill quando o `mise.toml` for preenchido, listando as ferramentas reais e as tasks relevantes.
+Tasks disponíveis (`mise run <task>`):
+
+- `api` — sobe a API HTTP (`backend/cmd/api`, porta `:8080`).
+- `web` — sobe o frontend (Vite dev server em `:5173`, proxy `/api` → `:8080`).
+- `swagger` — regera `backend/docs/swagger.{json,yaml}` a partir das annotations.
+
+Comandos `npm`/`node` do frontend rodam via `mise exec -- npm ...` (ou direto, se
+o `mise` já está ativo no shell), a partir de `frontend/`.
+
+Atualize esta skill ao mudar `mise.toml` (novas ferramentas ou tasks).

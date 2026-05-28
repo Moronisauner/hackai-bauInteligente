@@ -1,0 +1,120 @@
+import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { listAccounts } from '../api/client'
+import type { Account } from '../api/types'
+import { formatBRL, formatDateBR } from '../lib/format'
+import {
+  Button,
+  EmptyState,
+  ErrorBanner,
+  PageShell,
+  Spinner,
+} from '../components/ui'
+
+const ACCOUNT_TYPE_LABEL: Record<string, string> = {
+  CONTA_DEPOSITO_A_VISTA: 'Conta corrente',
+  CONTA_POUPANCA: 'Poupança',
+  CONTA_PAGAMENTO_PRE_PAGA: 'Conta de pagamento',
+}
+
+function accountTypeLabel(type: string): string {
+  return ACCOUNT_TYPE_LABEL[type] ?? type
+}
+
+export function AccountsPage() {
+  const { userID = '' } = useParams()
+  const navigate = useNavigate()
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    setError(null)
+    listAccounts(userID)
+      .then((data) => active && setAccounts(data))
+      .catch((e) => active && setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [userID])
+
+  const total = accounts.reduce((sum, a) => sum + Number(a.balance), 0)
+  const refDate = accounts[0]?.balance_reference_date
+
+  return (
+    <PageShell
+      title="Contas do cliente"
+      subtitle={
+        <>
+          <span className="font-mono">{userID}</span>
+          {refDate && <span className="ml-2">· Saldo em {formatDateBR(refDate)}</span>}
+        </>
+      }
+      right={
+        <>
+          <Button variant="secondary" onClick={() => navigate('/')}>
+            ← Voltar
+          </Button>
+          {accounts.length > 0 && (
+            <Button onClick={() => navigate(`/users/${userID}/goals/new`)}>
+              Criar objetivo
+            </Button>
+          )}
+        </>
+      }
+    >
+      {error && <ErrorBanner message={error} />}
+
+      {loading ? (
+        <Spinner label="Carregando contas…" />
+      ) : accounts.length === 0 ? (
+        <EmptyState title="Este cliente não tem contas disponíveis">
+          <button
+            className="text-indigo-600 underline hover:text-indigo-700"
+            onClick={() => navigate('/')}
+          >
+            Voltar para a seleção de clientes
+          </button>
+        </EmptyState>
+      ) : (
+        <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="px-4 py-3">Instituição</th>
+                <th className="px-4 py-3">Tipo</th>
+                <th className="px-4 py-3">Agência / Número</th>
+                <th className="px-4 py-3 text-right">Saldo</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {accounts.map((a) => (
+                <tr key={a.account_id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-slate-800">{a.brand_name}</td>
+                  <td className="px-4 py-3 text-slate-600">{accountTypeLabel(a.type)}</td>
+                  <td className="px-4 py-3 font-mono text-slate-600">
+                    {a.branch_code} / {a.number}-{a.check_digit}
+                  </td>
+                  <td className="px-4 py-3 text-right font-medium text-slate-800">
+                    {formatBRL(a.balance)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-slate-50 font-semibold text-slate-800">
+              <tr>
+                <td className="px-4 py-3" colSpan={3}>
+                  Total
+                </td>
+                <td className="px-4 py-3 text-right">{formatBRL(total)}</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+    </PageShell>
+  )
+}

@@ -8,6 +8,8 @@ HTTP_PORT = ":8080"
 
 [tools]
 go = "latest"
+# Runtime do frontend (SPA Vite + React + TS, vide frontend/).
+node = "lts"
 # Gerador de docs OpenAPI a partir das annotations (vide tarefa swagger abaixo).
 "go:github.com/swaggo/swag/cmd/swag" = "v1.16.4"
 
@@ -19,3 +21,28 @@ dir = "{{ config_root }}/backend"
 [tasks.swagger]
 description = "Regera backend/docs/swagger.{json,yaml} a partir das annotations"
 run = "cd backend && swag init --generalInfo cmd/api/main.go --output docs --parseDependency --parseInternal"
+
+[tasks.web]
+description = "Sobe o frontend (Vite dev server, proxy /api → :8080)"
+run = "npm run dev"
+dir = "{{ config_root }}/frontend"
+
+[tasks.infra]
+description = "Sobe a infra (Postgres) via docker compose, em background, e espera ficar healthy"
+run = "docker compose -f infra/docker-compose.yml up -d --wait"
+dir = "{{ config_root }}"
+
+[tasks.up]
+description = "Stack completo: infra (docker -d) + backend (:8080) + frontend (:5173). Ctrl+C derruba os servers."
+depends = ["infra"]
+dir = "{{ config_root }}"
+run = """
+set -e
+mise run api &
+api_pid=$!
+mise run web &
+web_pid=$!
+# Ao receber Ctrl+C, encerra os dois servers (a infra continua de pé).
+trap 'kill $api_pid $web_pid 2>/dev/null' INT TERM
+wait
+"""

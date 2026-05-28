@@ -15,7 +15,11 @@
       "Bash(swag init *)",
       "Bash(mise run *)",
       "Bash(echo \"exit: $?\")",
-      "Bash(mise install *)"
+      "Bash(mise install *)",
+      "Bash(npm --version)",
+      "Bash(mise ls *)",
+      "Bash(mise exec *)",
+      "Bash(mise tasks *)"
     ]
   }
 }
