@@ -79,6 +79,48 @@ export type GoalDraft = {
   start_date: string
 }
 
+// --- Assistente de planejamento (chat) ---
+
+export type ChatRole = 'user' | 'assistant'
+
+export type ChatMessage = {
+  role: ChatRole
+  content: string
+}
+
+// Alocação sugerida pelo assistente, enriquecida com dados da conta.
+export type ProposedAllocation = {
+  account_id: string
+  percentage: number
+  reason: string
+  brand_name: string
+  number: string
+}
+
+// Uma opção de plano (variação de valor/prazo) do mesmo objetivo.
+export type PlanOption = {
+  label: string
+  summary: string
+  target_amount: string
+  duration_months: number
+}
+
+// Objetivo proposto pelo assistente: nome + alocações (comuns) + opções de plano.
+// O cliente escolhe uma opção, que vira um CreateGoalInput.
+export type PlanProposal = {
+  name: string
+  start_date: string
+  allocations: ProposedAllocation[]
+  plans: PlanOption[]
+}
+
+// Resposta de um turno do assistente (AssistantPlanResponse).
+export type AssistantTurn = {
+  reply: string
+  done: boolean
+  proposal: PlanProposal | null
+}
+
 export type BacktestMovementStatus =
   | 'COMPLETED'
   | 'SKIPPED_NO_GROWTH'

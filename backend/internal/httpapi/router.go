@@ -12,6 +12,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	httpSwagger "github.com/swaggo/http-swagger/v2"
 
+	"github.com/moronisauner/hackai/backend/internal/assistant"
 	"github.com/moronisauner/hackai/backend/internal/balance"
 	"github.com/moronisauner/hackai/backend/internal/config"
 	"github.com/moronisauner/hackai/backend/internal/goal"
@@ -21,19 +22,21 @@ import (
 
 // Server agrega as dependências compartilhadas pelos handlers.
 type Server struct {
-	pool    *pgxpool.Pool
-	cfg     config.Config
-	balance *balance.Repo
-	goals   *goal.Service
+	pool      *pgxpool.Pool
+	cfg       config.Config
+	balance   *balance.Repo
+	goals     *goal.Service
+	assistant *assistant.Client
 }
 
 // New monta o http.Handler com todas as rotas da API.
 func New(pool *pgxpool.Pool, cfg config.Config) http.Handler {
 	s := &Server{
-		pool:    pool,
-		cfg:     cfg,
-		balance: &balance.Repo{Pool: pool},
-		goals:   &goal.Service{Pool: pool},
+		pool:      pool,
+		cfg:       cfg,
+		balance:   &balance.Repo{Pool: pool},
+		goals:     &goal.Service{Pool: pool},
+		assistant: assistant.NewClient(cfg.LLMBaseURL, cfg.LLMModel, cfg.LLMAPIKey),
 	}
 
 	r := chi.NewRouter()
@@ -52,6 +55,7 @@ func New(pool *pgxpool.Pool, cfg config.Config) http.Handler {
 	r.Get("/users/{userID}/accounts", s.ListAccountsByUser)
 	r.Post("/users/{userID}/goals", s.CreateGoal)
 	r.Get("/users/{userID}/goals", s.ListGoalsByUser)
+	r.Post("/users/{userID}/assistant/plan", s.AssistantPlan)
 
 	r.Get("/goals/{goalID}", s.GetGoal)
 	r.Post("/goals/{goalID}/allocations", s.AddGoalAllocation)

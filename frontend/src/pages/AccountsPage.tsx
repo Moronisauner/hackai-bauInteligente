@@ -64,9 +64,17 @@ export function AccountsPage() {
             ← Voltar
           </Button>
           {accounts.length > 0 && (
-            <Button onClick={() => navigate(`/users/${userID}/goals/new`)}>
-              Criar objetivo
-            </Button>
+            <>
+              <Button
+                variant="secondary"
+                onClick={() => navigate(`/users/${userID}/plan/chat`)}
+              >
+                ✨ Planejar com assistente
+              </Button>
+              <Button onClick={() => navigate(`/users/${userID}/goals/new`)}>
+                Criar objetivo
+              </Button>
+            </>
           )}
         </>
       }

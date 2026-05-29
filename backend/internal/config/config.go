@@ -14,6 +14,9 @@ type Config struct {
 	DatabaseURL      string    // obrigatória
 	POCReferenceDate time.Time // obrigatória, formato YYYY-MM-DD
 	HTTPPort         string    // default ":8080"
+	LLMBaseURL       string    // default "https://api.groq.com/openai/v1"
+	LLMModel         string    // default "llama-3.3-70b-versatile"
+	LLMAPIKey        string    // opcional; necessário para provedores em nuvem
 }
 
 // Load lê a configuração do ambiente. Retorna erro descritivo (prefixado com
@@ -40,6 +43,21 @@ func Load() (Config, error) {
 	if cfg.HTTPPort == "" {
 		cfg.HTTPPort = ":8080"
 	}
+
+	// Provedor de LLM do assistente de planejamento (opcionais). A app sobe
+	// mesmo sem o LLM disponível; o endpoint do assistente é que falha em runtime.
+	cfg.LLMBaseURL = os.Getenv("LLM_BASE_URL")
+	if cfg.LLMBaseURL == "" {
+		cfg.LLMBaseURL = "https://api.groq.com/openai/v1"
+	}
+
+	cfg.LLMModel = os.Getenv("LLM_MODEL")
+	if cfg.LLMModel == "" {
+		cfg.LLMModel = "llama-3.3-70b-versatile"
+	}
+
+	// Chave do provedor (não tem default — é segredo, vem do ambiente/.env).
+	cfg.LLMAPIKey = os.Getenv("LLM_API_KEY")
 
 	return cfg, nil
 }

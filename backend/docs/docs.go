@@ -28,7 +28,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httpapi.ConfigDTO"
+                            "$ref": "#/definitions/internal_httpapi.ConfigDTO"
                         }
                     }
                 }
@@ -56,7 +56,130 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httpapi.GoalDTO"
+                            "$ref": "#/definitions/internal_httpapi.GoalDTO"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/goals/{goalID}/allocations": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "goals"
+                ],
+                "summary": "Adiciona uma alocação (conta-fonte) a um objetivo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do objetivo",
+                        "name": "goalID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Conta e percentual",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.AddAllocationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/goals/{goalID}/allocations/{accountID}": {
+            "delete": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "goals"
+                ],
+                "summary": "Remove uma alocação (conta-fonte) de um objetivo",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do objetivo",
+                        "name": "goalID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "ID da conta-fonte",
+                        "name": "accountID",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
                         }
                     },
                     "404": {
@@ -102,7 +225,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httpapi.BacktestResultDTO"
+                            "$ref": "#/definitions/internal_httpapi.BacktestResultDTO"
                         }
                     },
                     "404": {
@@ -146,7 +269,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/httpapi.BacktestResultDTO"
+                            "$ref": "#/definitions/internal_httpapi.BacktestResultDTO"
                         }
                     },
                     "404": {
@@ -224,7 +347,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/httpapi.UserDTO"
+                                "$ref": "#/definitions/internal_httpapi.UserDTO"
                             }
                         }
                     },
@@ -264,12 +387,79 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/httpapi.AccountDTO"
+                                "$ref": "#/definitions/internal_httpapi.AccountDTO"
                             }
                         }
                     },
                     "500": {
                         "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        "/users/{userID}/assistant/plan": {
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "assistant"
+                ],
+                "summary": "Turno do assistente de planejamento (chat)",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "ID do cliente",
+                        "name": "userID",
+                        "in": "path",
+                        "required": true
+                    },
+                    {
+                        "description": "Histórico da conversa",
+                        "name": "body",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.AssistantPlanRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/internal_httpapi.AssistantPlanResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
                         "schema": {
                             "type": "object",
                             "additionalProperties": {
@@ -304,7 +494,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/httpapi.GoalSummaryDTO"
+                                "$ref": "#/definitions/internal_httpapi.GoalSummaryDTO"
                             }
                         }
                     },
@@ -344,7 +534,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/httpapi.CreateGoalRequest"
+                            "$ref": "#/definitions/internal_httpapi.CreateGoalRequest"
                         }
                     }
                 ],
@@ -352,7 +542,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/httpapi.CreateGoalResponse"
+                            "$ref": "#/definitions/internal_httpapi.CreateGoalResponse"
                         }
                     },
                     "400": {
@@ -378,7 +568,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "httpapi.AccountDTO": {
+        "internal_httpapi.AccountDTO": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -412,7 +602,7 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.AllocationRequest": {
+        "internal_httpapi.AddAllocationRequest": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -424,7 +614,44 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.BacktestMovementDTO": {
+        "internal_httpapi.AllocationRequest": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "integer",
+                    "example": 50
+                }
+            }
+        },
+        "internal_httpapi.AssistantPlanRequest": {
+            "type": "object",
+            "properties": {
+                "messages": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.ChatMessageDTO"
+                    }
+                }
+            }
+        },
+        "internal_httpapi.AssistantPlanResponse": {
+            "type": "object",
+            "properties": {
+                "done": {
+                    "type": "boolean"
+                },
+                "proposal": {
+                    "$ref": "#/definitions/internal_httpapi.PlanProposalDTO"
+                },
+                "reply": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.BacktestMovementDTO": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -434,36 +661,44 @@ const docTemplate = `{
                     "type": "string",
                     "example": "500.00"
                 },
+                "entradas": {
+                    "type": "string",
+                    "example": "2000.00"
+                },
                 "reference_month": {
                     "type": "string",
                     "example": "2025-06-01"
+                },
+                "saidas": {
+                    "type": "string",
+                    "example": "1500.00"
                 },
                 "status": {
                     "type": "string"
                 }
             }
         },
-        "httpapi.BacktestResultDTO": {
+        "internal_httpapi.BacktestResultDTO": {
             "type": "object",
             "properties": {
                 "movements": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/httpapi.BacktestMovementDTO"
+                        "$ref": "#/definitions/internal_httpapi.BacktestMovementDTO"
                     }
                 },
                 "summary": {
-                    "$ref": "#/definitions/httpapi.BacktestSummaryDTO"
+                    "$ref": "#/definitions/internal_httpapi.BacktestSummaryDTO"
                 },
                 "vault_evolution": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/httpapi.VaultEvolutionDTO"
+                        "$ref": "#/definitions/internal_httpapi.VaultEvolutionDTO"
                     }
                 }
             }
         },
-        "httpapi.BacktestSummaryDTO": {
+        "internal_httpapi.BacktestSummaryDTO": {
             "type": "object",
             "properties": {
                 "completed_count": {
@@ -492,7 +727,20 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.ConfigDTO": {
+        "internal_httpapi.ChatMessageDTO": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "example": "Quero juntar 10 mil para uma viagem"
+                },
+                "role": {
+                    "type": "string",
+                    "example": "user"
+                }
+            }
+        },
+        "internal_httpapi.ConfigDTO": {
             "type": "object",
             "properties": {
                 "poc_reference_date": {
@@ -501,13 +749,13 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.CreateGoalRequest": {
+        "internal_httpapi.CreateGoalRequest": {
             "type": "object",
             "properties": {
                 "allocations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/httpapi.AllocationRequest"
+                        "$ref": "#/definitions/internal_httpapi.AllocationRequest"
                     }
                 },
                 "duration_months": {
@@ -528,7 +776,7 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.CreateGoalResponse": {
+        "internal_httpapi.CreateGoalResponse": {
             "type": "object",
             "properties": {
                 "goal_id": {
@@ -539,7 +787,7 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.GoalAllocationDTO": {
+        "internal_httpapi.GoalAllocationDTO": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -559,13 +807,13 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.GoalDTO": {
+        "internal_httpapi.GoalDTO": {
             "type": "object",
             "properties": {
                 "allocations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/httpapi.GoalAllocationDTO"
+                        "$ref": "#/definitions/internal_httpapi.GoalAllocationDTO"
                     }
                 },
                 "duration_months": {
@@ -591,7 +839,7 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.GoalSummaryDTO": {
+        "internal_httpapi.GoalSummaryDTO": {
             "type": "object",
             "properties": {
                 "duration_months": {
@@ -611,7 +859,67 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.UserDTO": {
+        "internal_httpapi.PlanOptionDTO": {
+            "type": "object",
+            "properties": {
+                "duration_months": {
+                    "type": "integer"
+                },
+                "label": {
+                    "type": "string"
+                },
+                "summary": {
+                    "type": "string"
+                },
+                "target_amount": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.PlanProposalDTO": {
+            "type": "object",
+            "properties": {
+                "allocations": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.ProposedAllocationDTO"
+                    }
+                },
+                "name": {
+                    "type": "string"
+                },
+                "plans": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/internal_httpapi.PlanOptionDTO"
+                    }
+                },
+                "start_date": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.ProposedAllocationDTO": {
+            "type": "object",
+            "properties": {
+                "account_id": {
+                    "type": "string"
+                },
+                "brand_name": {
+                    "type": "string"
+                },
+                "number": {
+                    "type": "string"
+                },
+                "percentage": {
+                    "type": "integer"
+                },
+                "reason": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_httpapi.UserDTO": {
             "type": "object",
             "properties": {
                 "accounts_count": {
@@ -625,7 +933,7 @@ const docTemplate = `{
                 }
             }
         },
-        "httpapi.VaultEvolutionDTO": {
+        "internal_httpapi.VaultEvolutionDTO": {
             "type": "object",
             "properties": {
                 "balance": {

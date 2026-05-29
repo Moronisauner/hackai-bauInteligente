@@ -1,6 +1,8 @@
 package httpapi
 
 import (
+	"context"
+	"fmt"
 	"net/http"
 	"sort"
 
@@ -35,8 +37,19 @@ type AccountDTO struct {
 //	@Router		/users/{userID}/accounts [get]
 func (s *Server) ListAccountsByUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
-	ctx := r.Context()
 
+	out, err := s.loadAccounts(r.Context(), userID)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	writeJSON(w, http.StatusOK, out)
+}
+
+// loadAccounts devolve as contas AVAILABLE de um cliente com o saldo
+// reconstruído na POC_REFERENCE_DATE, ordenadas do maior saldo para o menor.
+// Reaproveitado pelo handler de listagem e pelo assistente de planejamento.
+func (s *Server) loadAccounts(ctx context.Context, userID string) ([]AccountDTO, error) {
 	const sql = `
 		SELECT id, brand_name, type, branch_code, number, check_digit, compe_code
 		FROM bank_accounts
@@ -45,8 +58,7 @@ func (s *Server) ListAccountsByUser(w http.ResponseWriter, r *http.Request) {
 
 	rows, err := s.pool.Query(ctx, sql, userID)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to list accounts")
-		return
+		return nil, fmt.Errorf("failed to list accounts")
 	}
 	defer rows.Close()
 
@@ -58,21 +70,18 @@ func (s *Server) ListAccountsByUser(w http.ResponseWriter, r *http.Request) {
 	for rows.Next() {
 		var a accountRow
 		if err := rows.Scan(&a.id, &a.brandName, &a.accType, &a.branchCode, &a.number, &a.checkDigit, &a.compeCode); err != nil {
-			writeError(w, http.StatusInternalServerError, "failed to scan account")
-			return
+			return nil, fmt.Errorf("failed to scan account")
 		}
 		accounts = append(accounts, a)
 		ids = append(ids, deref(a.id))
 	}
 	if err := rows.Err(); err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to read accounts")
-		return
+		return nil, fmt.Errorf("failed to read accounts")
 	}
 
 	balances, err := s.balance.ReconstructMany(ctx, ids, s.cfg.POCReferenceDate)
 	if err != nil {
-		writeError(w, http.StatusInternalServerError, "failed to compute balances")
-		return
+		return nil, fmt.Errorf("failed to compute balances")
 	}
 
 	refDate := s.cfg.POCReferenceDate.Format("2006-01-02")
@@ -102,7 +111,7 @@ func (s *Server) ListAccountsByUser(w http.ResponseWriter, r *http.Request) {
 		return balances[out[i].AccountID].GreaterThan(balances[out[j].AccountID])
 	})
 
-	writeJSON(w, http.StatusOK, out)
+	return out, nil
 }
 
 // deref devolve o valor de um *string ou "" se nil.

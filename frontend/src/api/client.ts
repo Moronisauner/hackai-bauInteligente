@@ -2,7 +2,9 @@
 // solto nos componentes. As rotas são relativas a /api (proxy do Vite → :8080).
 import type {
   Account,
+  AssistantTurn,
   BacktestResult,
+  ChatMessage,
   Config,
   CreateGoalInput,
   CreateGoalResponse,
@@ -108,4 +110,16 @@ export function runBacktest(goalID: string): Promise<BacktestResult> {
 
 export function getBacktest(goalID: string): Promise<BacktestResult> {
   return request<BacktestResult>(`/goals/${encodeURIComponent(goalID)}/backtest`)
+}
+
+// Roda um turno do assistente de planejamento: envia o histórico da conversa e
+// recebe a próxima fala + (quando pronta) a proposta de objetivo.
+export function assistantPlan(
+  userID: string,
+  messages: ChatMessage[],
+): Promise<AssistantTurn> {
+  return request<AssistantTurn>(
+    `/users/${encodeURIComponent(userID)}/assistant/plan`,
+    { method: 'POST', body: JSON.stringify({ messages }) },
+  )
 }
