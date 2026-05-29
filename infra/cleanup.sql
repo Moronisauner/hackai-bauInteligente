@@ -1,39 +1,17 @@
--- Limpeza da massa: mantém APENAS os clientes listados em kept_users e, dentro
--- deles, apenas as contas listadas em kept_accounts. Apaga todo o resto.
+-- Limpeza da massa: mantém APENAS os clientes e contas listados em infra/keep.conf
+-- e apaga todo o resto. Execução MANUAL apenas (NÃO fica em infra/initdb/, então
+-- não roda no init).
 --
--- Execução MANUAL apenas (NÃO fica em infra/initdb/, então não roda no init).
--- Uso: mise run db-cleanup
+-- Uso: mise run db-cleanup   (chama infra/db-cleanup.sh, que lê infra/keep.conf)
 --
--- Os clientes e contas mantidos são fixos abaixo (kept_users / kept_accounts).
+-- Este script ASSUME que as temp tables já existem e estão populadas:
+--   kept_users(user_id)  -> clientes a manter
+--   kept_accounts(id)    -> contas (bank_accounts.id) a manter
+-- O db-cleanup.sh as cria via \copy a partir do keep.conf antes de rodar este SQL.
+--
 -- Roda em transação única com ON_ERROR_STOP=1 (vide task): ou apaga tudo, ou nada.
 
 BEGIN;
-
--- Clientes mantidos.
-CREATE TEMP TABLE kept_users ON COMMIT DROP AS
-SELECT * FROM (VALUES
-    ('695a8cddb2c3fcf4d0536663f8cfca8f4d147f14d1af5e4835c2aeb82b80ce84'),
-    ('4696e5644145008947dc3543ae246a7ed68edfd45af2af1d8e76ed04de5b4907')
-) AS u(user_id);
-
--- Contas mantidas, restritas aos kept_users por segurança. Regras por cliente:
---   695a8c...: conjunto de contas por agência/número/dígito (pares únicos).
---   4696e5...: apenas uma conta específica (esse cliente tem duas contas com a
---              mesma tripla agência/número/dígito, então filtramos pelo id).
-CREATE TEMP TABLE kept_accounts ON COMMIT DROP AS
-SELECT id FROM bank_accounts
- WHERE user_id IN (SELECT user_id FROM kept_users)
-   AND (
-       (user_id = '695a8cddb2c3fcf4d0536663f8cfca8f4d147f14d1af5e4835c2aeb82b80ce84'
-        AND (branch_code, number, check_digit) IN (
-            ('0390', '17358201', '8'),
-            ('1000', '25066767', '6'),
-            ('2663', '25673713', '6'),
-            ('9227', '24530924', '8'),
-            ('8765', '89990558', '7')
-        ))
-    OR id = '863960cfdcbe69daab6a34fb2a1abb191a36aff6392814a0640a80f6e7f237fc'
-   );
 
 -- 1) Tabelas da POC, na ordem das FKs (filhos antes dos pais).
 --    goal_vault_movements -> goal_vaults -> goals ; goal_allocations -> goals.

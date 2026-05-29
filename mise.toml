@@ -48,13 +48,9 @@ run = "docker compose -f infra/docker-compose.yml down -v && docker compose -f i
 dir = "{{ config_root }}"
 
 [tasks.db-cleanup]
-description = "Mantém só os clientes/contas fixados em infra/cleanup.sql e apaga o resto da massa (manual)."
+description = "Mantém só os clientes/contas listados em infra/keep.conf e apaga o resto da massa (manual)."
 dir = "{{ config_root }}"
-run = """
-docker compose -f infra/docker-compose.yml exec -T postgres \
-  psql -U hackai -d hackai -v ON_ERROR_STOP=1 \
-  < infra/cleanup.sql
-"""
+run = "infra/db-cleanup.sh"
 
 [tasks.up]
 description = "Stack completo: db-up (docker -d) + backend (:8080) + frontend (:5173). Ctrl+C derruba os servers."
