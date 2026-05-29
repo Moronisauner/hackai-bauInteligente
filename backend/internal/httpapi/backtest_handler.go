@@ -13,6 +13,7 @@ import (
 	"github.com/shopspring/decimal"
 
 	"github.com/moronisauner/hackai/backend/internal/backtest"
+	"github.com/moronisauner/hackai/backend/internal/balance"
 )
 
 // BacktestSummaryDTO agrega os KPIs do backtest (RF-06).
@@ -26,12 +27,16 @@ type BacktestSummaryDTO struct {
 	WorstAccountID     string  `json:"worst_account_id"`
 }
 
-// BacktestMovementDTO é um movimento do baú na resposta.
+// BacktestMovementDTO é um movimento do baú na resposta. Entradas e Saidas são
+// os totais movimentados pela conta-fonte naquele mês (créditos e débitos
+// efetivados), exibidos no detalhe da célula da tabela mês a mês.
 type BacktestMovementDTO struct {
 	ReferenceMonth string `json:"reference_month" example:"2025-06-01"`
 	AccountID      string `json:"account_id"`
 	Status         string `json:"status"`
 	Amount         string `json:"amount" example:"500.00"`
+	Entradas       string `json:"entradas" example:"2000.00"`
+	Saidas         string `json:"saidas" example:"1500.00"`
 }
 
 // VaultEvolutionDTO é o saldo acumulado do baú ao fim de um mês.
@@ -88,6 +93,45 @@ func (s *Server) loadGoalPlan(ctx context.Context, goalID string) (goalPlan, err
 		})
 	}
 	return gp, rows.Err()
+}
+
+// flowsByAccountMonth devolve, indexado por "accountID|YYYY-MM-01", o total de
+// entradas e saídas de cada conta-fonte em cada mês de competência dos
+// movimentos. É enriquecimento de exibição da tabela mês a mês: derivamos a
+// janela e as contas dos próprios movimentos e consultamos transaction_events.
+func (s *Server) flowsByAccountMonth(ctx context.Context, movements []backtest.Movement) (map[string]balance.MonthlyFlow, error) {
+	if len(movements) == 0 {
+		return nil, nil
+	}
+
+	accSet := make(map[string]struct{})
+	minM, maxM := movements[0].ReferenceMonth, movements[0].ReferenceMonth
+	for _, mv := range movements {
+		accSet[mv.AccountID] = struct{}{}
+		if mv.ReferenceMonth.Before(minM) {
+			minM = mv.ReferenceMonth
+		}
+		if mv.ReferenceMonth.After(maxM) {
+			maxM = mv.ReferenceMonth
+		}
+	}
+	accounts := make([]string, 0, len(accSet))
+	for a := range accSet {
+		accounts = append(accounts, a)
+	}
+
+	// Janela [primeiro dia do mês mais antigo, primeiro dia do mês seguinte ao
+	// mais recente) — exclusiva no fim para fechar o último mês inteiro.
+	flows, err := s.balance.MonthlyFlows(ctx, accounts, minM, maxM.AddDate(0, 1, 0))
+	if err != nil {
+		return nil, err
+	}
+
+	out := make(map[string]balance.MonthlyFlow, len(flows))
+	for _, f := range flows {
+		out[f.AccountID+"|"+f.Month.Format("2006-01-02")] = f
+	}
+	return out, nil
 }
 
 // RunBacktest executa o backtest do objetivo e persiste os movimentos de forma
@@ -162,7 +206,13 @@ func (s *Server) RunBacktest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, buildResult(gp.target, movements))
+	flows, err := s.flowsByAccountMonth(ctx, movements)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load monthly flows")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, buildResult(gp.target, movements, flows))
 }
 
 // GetBacktest lê os movimentos persistidos do baú e devolve KPIs + séries.
@@ -226,12 +276,18 @@ func (s *Server) GetBacktest(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, buildResult(target, movements))
+	flows, err := s.flowsByAccountMonth(ctx, movements)
+	if err != nil {
+		writeError(w, http.StatusInternalServerError, "failed to load monthly flows")
+		return
+	}
+
+	writeJSON(w, http.StatusOK, buildResult(target, movements, flows))
 }
 
 // buildResult calcula os KPIs e séries a partir dos movimentos (uma passada
 // principal + agregação por mês), conforme RF-05/RF-06 e §10.
-func buildResult(target decimal.Decimal, movements []backtest.Movement) BacktestResultDTO {
+func buildResult(target decimal.Decimal, movements []backtest.Movement, flows map[string]balance.MonthlyFlow) BacktestResultDTO {
 	var (
 		completed   int
 		vaultBal    = decimal.Zero
@@ -260,11 +316,16 @@ func buildResult(target decimal.Decimal, movements []backtest.Movement) Backtest
 		// Saldo acumulado do baú ao fim de cada mês (carrega o acumulado total).
 		monthCumEOM[month] = vaultBal
 
+		// flows ausente para o par conta/mês → entradas/saídas zeradas (zero value
+		// de decimal.Decimal formata como "0.00").
+		f := flows[mv.AccountID+"|"+month]
 		dtoMoves = append(dtoMoves, BacktestMovementDTO{
 			ReferenceMonth: month,
 			AccountID:      mv.AccountID,
 			Status:         mv.Status,
 			Amount:         mv.Amount.StringFixed(2),
+			Entradas:       f.Entradas.StringFixed(2),
+			Saidas:         f.Saidas.StringFixed(2),
 		})
 	}
 

@@ -223,9 +223,17 @@ function MonthlyTable({
     [result],
   )
   const cell = useMemo(() => {
-    const map = new Map<string, { status: string; amount: string }>()
+    const map = new Map<
+      string,
+      { status: string; amount: string; entradas: string; saidas: string }
+    >()
     for (const m of result.movements) {
-      map.set(`${m.reference_month}|${m.account_id}`, { status: m.status, amount: m.amount })
+      map.set(`${m.reference_month}|${m.account_id}`, {
+        status: m.status,
+        amount: m.amount,
+        entradas: m.entradas,
+        saidas: m.saidas,
+      })
     }
     return map
   }, [result])
@@ -263,9 +271,17 @@ function MonthlyTable({
                   const c = cell.get(`${month}|${id}`)
                   if (!c) return <td key={id} className="px-3 py-2 text-slate-300">—</td>
                   const s = STATUS_STYLE[c.status as BacktestMovementStatus] ?? STATUS_STYLE.SKIPPED_NO_GROWTH
+                  // Tooltip no hover (RF-06): além do poupado, os totais de
+                  // entradas e saídas da conta naquele mês.
+                  const tooltip = [
+                    s.label,
+                    `Poupado: ${formatBRL(c.amount)}`,
+                    `Entradas: ${formatBRL(c.entradas)}`,
+                    `Saídas: ${formatBRL(c.saidas)}`,
+                  ].join('\n')
                   return (
                     <td key={id} className="px-3 py-2 whitespace-nowrap">
-                      <span className={s.color} title={s.label}>
+                      <span className={`${s.color} cursor-help`} title={tooltip}>
                         {s.icon} {formatBRL(c.amount)}
                       </span>
                     </td>

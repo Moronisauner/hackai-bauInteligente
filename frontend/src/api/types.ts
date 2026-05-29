@@ -89,6 +89,8 @@ export type BacktestResult = {
     account_id: string
     status: BacktestMovementStatus
     amount: string
+    entradas: string // total de créditos efetivados da conta no mês
+    saidas: string // total de débitos efetivados da conta no mês
   }[]
   vault_evolution: { month: string; balance: string }[]
 }
