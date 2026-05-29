@@ -33,7 +33,6 @@ export function BacktestResultsPage() {
   const [goal, setGoal] = useState<Goal | null>(null)
   const [result, setResult] = useState<BacktestResult | null>(null)
   const [loading, setLoading] = useState(true)
-  const [rerunning, setRerunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [manageOpen, setManageOpen] = useState(false)
 
@@ -61,19 +60,6 @@ export function BacktestResultsPage() {
   useEffect(() => {
     void load()
   }, [load])
-
-  async function handleRerun() {
-    setRerunning(true)
-    setError(null)
-    try {
-      const r = await runBacktest(goalID)
-      setResult(r)
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setRerunning(false)
-    }
-  }
 
   // Recarrega goal + re-executa o backtest após mexer nas alocações, pra que
   // KPIs, gráfico e tabela reflitam as contas atuais.
@@ -117,9 +103,6 @@ export function BacktestResultsPage() {
               Gerenciar contas
             </Button>
           )}
-          <Button onClick={handleRerun} disabled={rerunning || loading}>
-            {rerunning ? 'Re-executando…' : 'Re-executar backtest'}
-          </Button>
         </>
       }
     >
@@ -377,9 +360,22 @@ function FocusPanel({
 }) {
   const [focused, setFocused] = useState(false)
 
+  // Fecha o foco com Esc enquanto o modal está aberto.
+  useEffect(() => {
+    if (!focused) return
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setFocused(false)
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [focused])
+
   return (
     <>
-      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+      <section
+        className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm"
+        onDoubleClick={() => setFocused(true)}
+      >
         <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
           <button
