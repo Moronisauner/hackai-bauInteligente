@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import {
   CartesianGrid,
+  Cell,
+  Legend,
   Line,
   LineChart,
+  Pie,
+  PieChart,
   ReferenceLine,
   ResponsiveContainer,
   Tooltip,
@@ -127,6 +131,7 @@ export function BacktestResultsPage() {
         <div className="space-y-8">
           <KpiCards result={result} />
           <VaultChart result={result} />
+          <ContributionChart result={result} accountLabel={accountLabel} />
           <MonthlyTable result={result} accountLabel={accountLabel} accountPct={accountPct} />
         </div>
       ) : null}
@@ -340,6 +345,86 @@ function Kpi({ label, value }: { label: string; value: string }) {
   )
 }
 
+function ExpandIcon() {
+  return (
+    <svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+    </svg>
+  )
+}
+
+// Painel com botão de foco: renderiza o conteúdo inline e, ao focar, reabre o
+// mesmo conteúdo dentro de um modal amplo. O render-prop recebe `focused` pra
+// o conteúdo poder crescer (ex.: altura do gráfico) na visão expandida.
+function FocusPanel({
+  title,
+  maxWidthClass = 'max-w-6xl',
+  children,
+}: {
+  title: string
+  maxWidthClass?: string
+  children: (focused: boolean) => ReactNode
+}) {
+  const [focused, setFocused] = useState(false)
+
+  return (
+    <>
+      <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold text-slate-700">{title}</h2>
+          <button
+            type="button"
+            onClick={() => setFocused(true)}
+            aria-label={`Focar em ${title}`}
+            title="Focar"
+            className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          >
+            <ExpandIcon />
+          </button>
+        </div>
+        {children(false)}
+      </section>
+
+      {focused && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+          onClick={() => setFocused(false)}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className={`flex max-h-[95vh] w-full ${maxWidthClass} flex-col overflow-hidden rounded-lg bg-white shadow-xl`}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sticky top-0 flex items-center justify-between border-b border-slate-200 bg-white px-5 py-4">
+              <h2 className="text-lg font-semibold text-slate-900">{title}</h2>
+              <button
+                type="button"
+                onClick={() => setFocused(false)}
+                aria-label="Fechar"
+                className="rounded p-1 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="overflow-auto px-5 py-4">{children(true)}</div>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 function VaultChart({ result }: { result: BacktestResult }) {
   const target = Number(result.summary.target_amount)
   const data = result.vault_evolution.map((v) => ({
@@ -347,11 +432,11 @@ function VaultChart({ result }: { result: BacktestResult }) {
     balance: Number(v.balance),
   }))
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700">Evolução do baú</h2>
-      <div className="h-72 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
+    <FocusPanel title="Evolução do baú">
+      {(focused) => (
+        <div className={focused ? 'h-[75vh] w-full' : 'h-72 w-full'}>
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={data} margin={{ top: 8, right: 16, bottom: 8, left: 8 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
             <XAxis dataKey="month" tick={{ fontSize: 12 }} />
             <YAxis
@@ -379,8 +464,79 @@ function VaultChart({ result }: { result: BacktestResult }) {
             />
           </LineChart>
         </ResponsiveContainer>
-      </div>
-    </section>
+        </div>
+      )}
+    </FocusPanel>
+  )
+}
+
+// Paleta para fatias do gráfico de contribuição por conta.
+const PIE_COLORS = [
+  '#4f46e5',
+  '#0ea5e9',
+  '#10b981',
+  '#f59e0b',
+  '#ef4444',
+  '#8b5cf6',
+  '#ec4899',
+  '#14b8a6',
+]
+
+// Gráfico de pizza: quanto cada conta contribuiu pro baú no período, somando
+// os valores poupados (movements.amount) por conta.
+function ContributionChart({
+  result,
+  accountLabel,
+}: {
+  result: BacktestResult
+  accountLabel: (id: string) => string
+}) {
+  const data = useMemo(() => {
+    const totals = new Map<string, number>()
+    for (const m of result.movements) {
+      const amount = Number(m.amount)
+      if (!amount) continue
+      totals.set(m.account_id, (totals.get(m.account_id) ?? 0) + amount)
+    }
+    return Array.from(totals.entries())
+      .map(([id, value]) => ({ id, name: accountLabel(id), value }))
+      .sort((a, b) => b.value - a.value)
+  }, [result, accountLabel])
+
+  const total = data.reduce((sum, d) => sum + d.value, 0)
+
+  if (data.length === 0) {
+    return null
+  }
+
+  return (
+    <FocusPanel title="Contribuição por conta">
+      {(focused) => (
+        <div className={focused ? 'h-[75vh] w-full' : 'h-72 w-full'}>
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+            <Pie
+              data={data}
+              dataKey="value"
+              nameKey="name"
+              cx="50%"
+              cy="50%"
+              outerRadius="80%"
+              label={(entry) =>
+                total > 0 ? `${Math.round((entry.value / total) * 100)}%` : ''
+              }
+            >
+              {data.map((entry, i) => (
+                <Cell key={entry.id} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+              ))}
+            </Pie>
+            <Tooltip formatter={(v) => formatBRL(v as number)} labelClassName="text-xs" />
+            <Legend />
+          </PieChart>
+        </ResponsiveContainer>
+        </div>
+      )}
+    </FocusPanel>
   )
 }
 
@@ -428,8 +584,9 @@ function MonthlyTable({
   }, [result])
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-3 text-sm font-semibold text-slate-700">Movimentos mês a mês</h2>
+    <FocusPanel title="Movimentos mês a mês" maxWidthClass="max-w-[90rem]">
+      {() => (
+        <>
       <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
         {(Object.keys(STATUS_STYLE) as BacktestMovementStatus[]).map((k) => (
           <span key={k} className="inline-flex items-center gap-1">
@@ -485,6 +642,8 @@ function MonthlyTable({
           </tbody>
         </table>
       </div>
-    </section>
+        </>
+      )}
+    </FocusPanel>
   )
 }
