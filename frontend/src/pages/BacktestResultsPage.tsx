@@ -10,10 +10,18 @@ import {
   XAxis,
   YAxis,
 } from 'recharts'
-import { HttpError, getBacktest, getGoal, runBacktest } from '../api/client'
-import type { BacktestMovementStatus, BacktestResult, Goal } from '../api/types'
+import {
+  HttpError,
+  addGoalAllocation,
+  getBacktest,
+  getGoal,
+  listAccounts,
+  removeGoalAllocation,
+  runBacktest,
+} from '../api/client'
+import type { Account, BacktestMovementStatus, BacktestResult, Goal } from '../api/types'
 import { formatBRL, formatMonthBR } from '../lib/format'
-import { Button, ErrorBanner, PageShell, Spinner } from '../components/ui'
+import { Button, EmptyState, ErrorBanner, Modal, PageShell, Spinner } from '../components/ui'
 
 export function BacktestResultsPage() {
   const { goalID = '' } = useParams()
@@ -23,6 +31,7 @@ export function BacktestResultsPage() {
   const [loading, setLoading] = useState(true)
   const [rerunning, setRerunning] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [manageOpen, setManageOpen] = useState(false)
 
   // Carrega o backtest: tenta GET; se 404, dispara o POST automaticamente.
   const load = useCallback(async () => {
@@ -62,6 +71,14 @@ export function BacktestResultsPage() {
     }
   }
 
+  // Recarrega goal + re-executa o backtest após mexer nas alocações, pra que
+  // KPIs, gráfico e tabela reflitam as contas atuais.
+  const refreshAfterChange = useCallback(async () => {
+    const [g, r] = await Promise.all([getGoal(goalID), runBacktest(goalID)])
+    setGoal(g)
+    setResult(r)
+  }, [goalID])
+
   // Mapa account_id → rótulo amigável, a partir das alocações do goal.
   const accountLabel = useMemo(() => {
     const map: Record<string, string> = {}
@@ -91,6 +108,11 @@ export function BacktestResultsPage() {
               ← Voltar pra contas
             </Button>
           )}
+          {goal && (
+            <Button variant="secondary" onClick={() => setManageOpen(true)}>
+              Gerenciar contas
+            </Button>
+          )}
           <Button onClick={handleRerun} disabled={rerunning || loading}>
             {rerunning ? 'Re-executando…' : 'Re-executar backtest'}
           </Button>
@@ -108,7 +130,174 @@ export function BacktestResultsPage() {
           <MonthlyTable result={result} accountLabel={accountLabel} accountPct={accountPct} />
         </div>
       ) : null}
+
+      {manageOpen && goal && (
+        <ManageAccountsModal
+          goal={goal}
+          onClose={() => setManageOpen(false)}
+          onChanged={refreshAfterChange}
+        />
+      )}
     </PageShell>
+  )
+}
+
+// ManageAccountsModal permite adicionar uma nova conta-fonte ao objetivo ou
+// remover uma existente. Cada mutação chama onChanged, que recarrega o goal e
+// re-executa o backtest na página.
+function ManageAccountsModal({
+  goal,
+  onClose,
+  onChanged,
+}: {
+  goal: Goal
+  onClose: () => void
+  onChanged: () => Promise<void>
+}) {
+  const [accounts, setAccounts] = useState<Account[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+  // account_id em mutação no momento (desabilita seus botões).
+  const [busyID, setBusyID] = useState<string | null>(null)
+  // Percentual digitado por conta disponível, antes de adicionar.
+  const [pct, setPct] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    listAccounts(goal.user_id)
+      .then((data) => active && setAccounts(data))
+      .catch((e) => active && setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => active && setLoading(false))
+    return () => {
+      active = false
+    }
+  }, [goal.user_id])
+
+  const allocatedIDs = useMemo(
+    () => new Set(goal.allocations.map((a) => a.account_id)),
+    [goal],
+  )
+  const available = useMemo(
+    () => accounts.filter((a) => !allocatedIDs.has(a.account_id)),
+    [accounts, allocatedIDs],
+  )
+
+  // Executa uma mutação (add/remove) e, no sucesso, propaga onChanged. Os erros
+  // do backend (ex: última alocação) viram banner sem fechar o modal.
+  async function run(accountID: string, fn: () => Promise<void>) {
+    setBusyID(accountID)
+    setError(null)
+    try {
+      await fn()
+      await onChanged()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setBusyID(null)
+    }
+  }
+
+  async function handleAdd(accountID: string) {
+    const value = Number(pct[accountID])
+    if (!Number.isInteger(value) || value < 1 || value > 100) {
+      setError('Informe um percentual inteiro entre 1 e 100.')
+      return
+    }
+    await run(accountID, () =>
+      addGoalAllocation(goal.goal_id, { account_id: accountID, percentage: value }),
+    )
+    setPct((prev) => ({ ...prev, [accountID]: '' }))
+  }
+
+  function handleRemove(accountID: string) {
+    return run(accountID, () => removeGoalAllocation(goal.goal_id, accountID))
+  }
+
+  return (
+    <Modal title="Gerenciar contas do objetivo" onClose={onClose}>
+      {error && <ErrorBanner message={error} />}
+
+      <section className="mb-6">
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">Contas alocadas</h3>
+        {goal.allocations.length === 0 ? (
+          <EmptyState title="Nenhuma conta alocada" />
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+            {goal.allocations.map((a) => (
+              <li
+                key={a.account_id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-slate-800">
+                    {[a.brand_name, a.number].filter(Boolean).join(' · ') || a.account_id}
+                  </div>
+                  <div className="text-xs text-slate-500">{a.percentage}% da evolução mensal</div>
+                </div>
+                <Button
+                  variant="secondary"
+                  disabled={busyID != null || goal.allocations.length <= 1}
+                  onClick={() => handleRemove(a.account_id)}
+                  title={
+                    goal.allocations.length <= 1
+                      ? 'O objetivo precisa de ao menos uma conta'
+                      : undefined
+                  }
+                >
+                  {busyID === a.account_id ? 'Removendo…' : 'Remover'}
+                </Button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+
+      <section>
+        <h3 className="mb-2 text-sm font-semibold text-slate-700">Adicionar conta</h3>
+        {loading ? (
+          <Spinner label="Carregando contas…" />
+        ) : available.length === 0 ? (
+          <EmptyState title="Todas as contas do cliente já estão alocadas" />
+        ) : (
+          <ul className="divide-y divide-slate-100 rounded-lg border border-slate-200">
+            {available.map((a) => (
+              <li
+                key={a.account_id}
+                className="flex items-center justify-between gap-3 px-4 py-3"
+              >
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-slate-800">{a.brand_name}</div>
+                  <div className="font-mono text-xs text-slate-500">
+                    {a.branch_code} / {a.number}-{a.check_digit}
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number"
+                    min={1}
+                    max={100}
+                    placeholder="%"
+                    disabled={busyID != null}
+                    value={pct[a.account_id] ?? ''}
+                    onChange={(e) =>
+                      setPct((prev) => ({ ...prev, [a.account_id]: e.target.value }))
+                    }
+                    className="w-20 rounded-md border border-slate-300 px-2 py-1 text-right text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100"
+                  />
+                  <Button
+                    disabled={busyID != null}
+                    onClick={() => handleAdd(a.account_id)}
+                  >
+                    {busyID === a.account_id ? 'Adicionando…' : 'Adicionar'}
+                  </Button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </Modal>
   )
 }
 

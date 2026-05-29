@@ -79,6 +79,26 @@ export function getGoal(goalID: string): Promise<Goal> {
   return request<Goal>(`/goals/${encodeURIComponent(goalID)}`)
 }
 
+export function addGoalAllocation(
+  goalID: string,
+  body: { account_id: string; percentage: number },
+): Promise<void> {
+  return request<void>(`/goals/${encodeURIComponent(goalID)}/allocations`, {
+    method: 'POST',
+    body: JSON.stringify(body),
+  })
+}
+
+export function removeGoalAllocation(
+  goalID: string,
+  accountID: string,
+): Promise<void> {
+  return request<void>(
+    `/goals/${encodeURIComponent(goalID)}/allocations/${encodeURIComponent(accountID)}`,
+    { method: 'DELETE' },
+  )
+}
+
 export function runBacktest(goalID: string): Promise<BacktestResult> {
   return request<BacktestResult>(
     `/goals/${encodeURIComponent(goalID)}/backtest`,

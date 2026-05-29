@@ -19,6 +19,9 @@ type ErrValidation struct{ Msg string }
 
 func (e ErrValidation) Error() string { return e.Msg }
 
+// ErrNotFound marca um objetivo inexistente (mapeado para HTTP 404).
+var ErrNotFound = errors.New("goal not found")
+
 // validationf cria um ErrValidation formatado.
 func validationf(format string, args ...any) error {
 	return ErrValidation{Msg: fmt.Sprintf(format, args...)}
@@ -103,6 +106,76 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (goalID, vaultID s
 	return goalID, vaultID, nil
 }
 
+// AddAllocation adiciona uma alocação (conta-fonte + percentual) a um objetivo
+// já existente. A conta precisa pertencer ao mesmo usuário do objetivo e ainda
+// não estar alocada nele. Retorna ErrValidation (400) ou ErrNotFound (404).
+func (s *Service) AddAllocation(ctx context.Context, goalID, accountID string, percentage int) error {
+	if accountID == "" {
+		return validationf("account_id is required")
+	}
+	if percentage < 1 || percentage > 100 {
+		return validationf("percentage must be between 1 and 100")
+	}
+
+	var userID string
+	err := s.Pool.QueryRow(ctx, `SELECT user_id FROM goals WHERE id = $1`, goalID).Scan(&userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return ErrNotFound
+		}
+		return fmt.Errorf("goal: loading goal owner: %w", err)
+	}
+
+	if err := s.assertAccountsOwnedBy(ctx, userID, []string{accountID}); err != nil {
+		return err
+	}
+
+	var exists bool
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT EXISTS(SELECT 1 FROM goal_allocations WHERE goal_id = $1 AND account_id = $2)`,
+		goalID, accountID).Scan(&exists); err != nil {
+		return fmt.Errorf("goal: checking existing allocation: %w", err)
+	}
+	if exists {
+		return validationf("account is already allocated to this goal")
+	}
+
+	if _, err := s.Pool.Exec(ctx, `
+		INSERT INTO goal_allocations (id, goal_id, account_id, percentage)
+		VALUES ($1, $2, $3, $4)`,
+		uuid.NewString(), goalID, accountID, percentage); err != nil {
+		return fmt.Errorf("goal: insert allocation: %w", err)
+	}
+	return nil
+}
+
+// RemoveAllocation remove uma conta-fonte de um objetivo. Um objetivo precisa
+// manter ao menos uma alocação (RF-04), então a última não pode ser removida.
+// Retorna ErrValidation (400) ou ErrNotFound (404).
+func (s *Service) RemoveAllocation(ctx context.Context, goalID, accountID string) error {
+	var total int
+	if err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM goal_allocations WHERE goal_id = $1`, goalID).Scan(&total); err != nil {
+		return fmt.Errorf("goal: counting allocations: %w", err)
+	}
+	if total == 0 {
+		return ErrNotFound
+	}
+	if total <= 1 {
+		return validationf("cannot remove the last allocation; a goal needs at least one account")
+	}
+
+	ct, err := s.Pool.Exec(ctx,
+		`DELETE FROM goal_allocations WHERE goal_id = $1 AND account_id = $2`, goalID, accountID)
+	if err != nil {
+		return fmt.Errorf("goal: delete allocation: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return validationf("account is not allocated to this goal")
+	}
+	return nil
+}
+
 // validate aplica as regras de RF-03/RF-04 sobre a entrada.
 func validate(in CreateInput) error {
 	if in.UserID == "" {
@@ -168,4 +241,9 @@ func (s *Service) assertAccountsOwnedBy(ctx context.Context, userID string, acco
 func IsValidation(err error) bool {
 	var v ErrValidation
 	return errors.As(err, &v)
+}
+
+// IsNotFound reporta se err indica objetivo inexistente (HTTP 404).
+func IsNotFound(err error) bool {
+	return errors.Is(err, ErrNotFound)
 }

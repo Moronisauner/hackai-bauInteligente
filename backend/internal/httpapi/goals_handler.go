@@ -246,3 +246,79 @@ func (s *Server) GetGoal(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, dto)
 }
+
+// AddAllocationRequest é o corpo do POST /goals/{goalID}/allocations.
+type AddAllocationRequest struct {
+	AccountID  string `json:"account_id"`
+	Percentage int    `json:"percentage" example:"50"`
+}
+
+// AddGoalAllocation adiciona uma conta-fonte a um objetivo existente. O
+// percentual é a fatia da evolução mensal da conta que vai pra meta (RF-04).
+//
+//	@Summary	Adiciona uma alocação (conta-fonte) a um objetivo
+//	@Tags		goals
+//	@Accept		json
+//	@Produce	json
+//	@Param		goalID	path	string						true	"ID do objetivo"
+//	@Param		body	body	httpapi.AddAllocationRequest	true	"Conta e percentual"
+//	@Success	204
+//	@Failure	400	{object}	map[string]string
+//	@Failure	404	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/goals/{goalID}/allocations [post]
+func (s *Server) AddGoalAllocation(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "goalID")
+
+	var req AddAllocationRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		writeError(w, http.StatusBadRequest, "invalid JSON body")
+		return
+	}
+
+	if err := s.goals.AddAllocation(r.Context(), goalID, req.AccountID, req.Percentage); err != nil {
+		switch {
+		case goal.IsNotFound(err):
+			writeError(w, http.StatusNotFound, err.Error())
+		case goal.IsValidation(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to add allocation")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// RemoveGoalAllocation remove uma conta-fonte de um objetivo. Mantém ao menos
+// uma alocação por objetivo.
+//
+//	@Summary	Remove uma alocação (conta-fonte) de um objetivo
+//	@Tags		goals
+//	@Produce	json
+//	@Param		goalID		path	string	true	"ID do objetivo"
+//	@Param		accountID	path	string	true	"ID da conta-fonte"
+//	@Success	204
+//	@Failure	400	{object}	map[string]string
+//	@Failure	404	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/goals/{goalID}/allocations/{accountID} [delete]
+func (s *Server) RemoveGoalAllocation(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "goalID")
+	accountID := chi.URLParam(r, "accountID")
+
+	if err := s.goals.RemoveAllocation(r.Context(), goalID, accountID); err != nil {
+		switch {
+		case goal.IsNotFound(err):
+			writeError(w, http.StatusNotFound, err.Error())
+		case goal.IsValidation(err):
+			writeError(w, http.StatusBadRequest, err.Error())
+		default:
+			writeError(w, http.StatusInternalServerError, "failed to remove allocation")
+		}
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
