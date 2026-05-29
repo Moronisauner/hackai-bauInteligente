@@ -58,6 +58,7 @@ func New(pool *pgxpool.Pool, cfg config.Config) http.Handler {
 	r.Post("/users/{userID}/assistant/plan", s.AssistantPlan)
 
 	r.Get("/goals/{goalID}", s.GetGoal)
+	r.Delete("/goals/{goalID}", s.DeleteGoal)
 	r.Post("/goals/{goalID}/allocations", s.AddGoalAllocation)
 	r.Delete("/goals/{goalID}/allocations/{accountID}", s.RemoveGoalAllocation)
 	r.Post("/goals/{goalID}/backtest", s.RunBacktest)

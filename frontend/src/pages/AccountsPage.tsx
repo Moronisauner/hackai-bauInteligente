@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { listAccounts, listGoals } from '../api/client'
-import type { Account, GoalSummary } from '../api/types'
+import { deleteGoal, listAccounts, listGoals, listUsers } from '../api/client'
+import type { Account, GoalSummary, User } from '../api/types'
 import { formatBRL, formatDateBR } from '../lib/format'
 import {
   Button,
@@ -26,18 +26,21 @@ export function AccountsPage() {
   const navigate = useNavigate()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [goals, setGoals] = useState<GoalSummary[]>([])
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [deletingGoalID, setDeletingGoalID] = useState<string | null>(null)
 
   useEffect(() => {
     let active = true
     setLoading(true)
     setError(null)
-    Promise.all([listAccounts(userID), listGoals(userID)])
-      .then(([accountsData, goalsData]) => {
+    Promise.all([listAccounts(userID), listGoals(userID), listUsers()])
+      .then(([accountsData, goalsData, usersData]) => {
         if (!active) return
         setAccounts(accountsData)
         setGoals(goalsData)
+        setUser(usersData.find((u) => u.user_id === userID) ?? null)
       })
       .catch((e) => active && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => active && setLoading(false))
@@ -46,12 +49,28 @@ export function AccountsPage() {
     }
   }, [userID])
 
+  async function handleDeleteGoal(goal: GoalSummary) {
+    if (!window.confirm(`Deletar o objetivo "${goal.name}"? Essa ação não pode ser desfeita.`)) {
+      return
+    }
+    setDeletingGoalID(goal.goal_id)
+    setError(null)
+    try {
+      await deleteGoal(goal.goal_id)
+      setGoals((prev) => prev.filter((g) => g.goal_id !== goal.goal_id))
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setDeletingGoalID(null)
+    }
+  }
+
   const total = accounts.reduce((sum, a) => sum + Number(a.balance), 0)
   const refDate = accounts[0]?.balance_reference_date
 
   return (
     <PageShell
-      title="Contas do cliente"
+      title={user?.nome ?? 'Contas do cliente'}
       subtitle={
         <>
           <span className="font-mono">{userID}</span>
@@ -148,6 +167,7 @@ export function AccountsPage() {
                     <th className="px-4 py-3">Início</th>
                     <th className="px-4 py-3 text-right">Prazo</th>
                     <th className="px-4 py-3 text-right">Meta</th>
+                    <th className="px-4 py-3 text-right">Ações</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -166,6 +186,19 @@ export function AccountsPage() {
                       </td>
                       <td className="px-4 py-3 text-right font-medium text-slate-800">
                         {formatBRL(g.target_amount)}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            void handleDeleteGoal(g)
+                          }}
+                          disabled={deletingGoalID === g.goal_id}
+                          className="rounded-md px-2 py-1 text-sm font-medium text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {deletingGoalID === g.goal_id ? 'Deletando…' : 'Deletar'}
+                        </button>
                       </td>
                     </tr>
                   ))}
