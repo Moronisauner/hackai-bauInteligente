@@ -34,6 +34,15 @@ export type Allocation = {
   type?: string
 }
 
+// Resumo de um objetivo na listagem do cliente (GoalSummaryDTO).
+export type GoalSummary = {
+  goal_id: string
+  name: string
+  target_amount: string // string decimal
+  duration_months: number
+  start_date: string // YYYY-MM-DD
+}
+
 // Detalhe de um objetivo (GoalDTO). Observação: o backend usa `goal_id`.
 export type Goal = {
   goal_id: string

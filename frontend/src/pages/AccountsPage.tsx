@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { listAccounts } from '../api/client'
-import type { Account } from '../api/types'
+import { listAccounts, listGoals } from '../api/client'
+import type { Account, GoalSummary } from '../api/types'
 import { formatBRL, formatDateBR } from '../lib/format'
 import {
   Button,
@@ -25,6 +25,7 @@ export function AccountsPage() {
   const { userID = '' } = useParams()
   const navigate = useNavigate()
   const [accounts, setAccounts] = useState<Account[]>([])
+  const [goals, setGoals] = useState<GoalSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,8 +33,12 @@ export function AccountsPage() {
     let active = true
     setLoading(true)
     setError(null)
-    listAccounts(userID)
-      .then((data) => active && setAccounts(data))
+    Promise.all([listAccounts(userID), listGoals(userID)])
+      .then(([accountsData, goalsData]) => {
+        if (!active) return
+        setAccounts(accountsData)
+        setGoals(goalsData)
+      })
       .catch((e) => active && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => active && setLoading(false))
     return () => {
@@ -114,6 +119,53 @@ export function AccountsPage() {
             </tfoot>
           </table>
         </div>
+      )}
+
+      {!loading && accounts.length > 0 && (
+        <section className="mt-8">
+          <h2 className="mb-3 text-lg font-semibold tracking-tight text-slate-900">
+            Objetivos cadastrados
+          </h2>
+
+          {goals.length === 0 ? (
+            <EmptyState title="Este cliente ainda não tem objetivos cadastrados">
+              Crie o primeiro objetivo usando o botão acima.
+            </EmptyState>
+          ) : (
+            <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-sm">
+              <table className="min-w-full divide-y divide-slate-200 text-sm">
+                <thead className="bg-slate-50 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
+                  <tr>
+                    <th className="px-4 py-3">Objetivo</th>
+                    <th className="px-4 py-3">Início</th>
+                    <th className="px-4 py-3 text-right">Prazo</th>
+                    <th className="px-4 py-3 text-right">Meta</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {goals.map((g) => (
+                    <tr
+                      key={g.goal_id}
+                      className="cursor-pointer hover:bg-slate-50"
+                      onClick={() => navigate(`/goals/${g.goal_id}`)}
+                    >
+                      <td className="px-4 py-3 font-medium text-slate-800">{g.name}</td>
+                      <td className="px-4 py-3 text-slate-600">
+                        {formatDateBR(g.start_date)}
+                      </td>
+                      <td className="px-4 py-3 text-right text-slate-600">
+                        {g.duration_months} {g.duration_months === 1 ? 'mês' : 'meses'}
+                      </td>
+                      <td className="px-4 py-3 text-right font-medium text-slate-800">
+                        {formatBRL(g.target_amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </section>
       )}
     </PageShell>
   )

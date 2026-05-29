@@ -7,6 +7,7 @@ import type {
   CreateGoalInput,
   CreateGoalResponse,
   Goal,
+  GoalSummary,
   User,
 } from './types'
 
@@ -56,6 +57,12 @@ export function listUsers(q?: string): Promise<User[]> {
 
 export function listAccounts(userID: string): Promise<Account[]> {
   return request<Account[]>(`/users/${encodeURIComponent(userID)}/accounts`)
+}
+
+export function listGoals(userID: string): Promise<GoalSummary[]> {
+  return request<GoalSummary[]>(
+    `/users/${encodeURIComponent(userID)}/goals`,
+  )
 }
 
 export function createGoal(
