@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { listAccounts, listGoals } from '../api/client'
-import type { Account, GoalSummary } from '../api/types'
+import { listAccounts, listGoals, listUsers } from '../api/client'
+import type { Account, GoalSummary, User } from '../api/types'
 import { formatBRL, formatDateBR } from '../lib/format'
 import {
   Button,
@@ -26,6 +26,7 @@ export function AccountsPage() {
   const navigate = useNavigate()
   const [accounts, setAccounts] = useState<Account[]>([])
   const [goals, setGoals] = useState<GoalSummary[]>([])
+  const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -33,11 +34,12 @@ export function AccountsPage() {
     let active = true
     setLoading(true)
     setError(null)
-    Promise.all([listAccounts(userID), listGoals(userID)])
-      .then(([accountsData, goalsData]) => {
+    Promise.all([listAccounts(userID), listGoals(userID), listUsers()])
+      .then(([accountsData, goalsData, usersData]) => {
         if (!active) return
         setAccounts(accountsData)
         setGoals(goalsData)
+        setUser(usersData.find((u) => u.user_id === userID) ?? null)
       })
       .catch((e) => active && setError(e instanceof Error ? e.message : String(e)))
       .finally(() => active && setLoading(false))
@@ -51,7 +53,7 @@ export function AccountsPage() {
 
   return (
     <PageShell
-      title="Contas do cliente"
+      title={user?.nome ?? 'Contas do cliente'}
       subtitle={
         <>
           <span className="font-mono">{userID}</span>

@@ -106,8 +106,9 @@ export function AllocationFormPage() {
       subtitle={
         <>
           Etapa 2 de 2 · meta {formatBRL(draft.target_amount)} em {draft.duration_months} meses ·
-          o % é a fatia da evolução mensal de cada conta (quanto do que ela crescer no mês vai pra
-          meta) — contas são independentes e não precisam somar 100%
+          o % é a fatia do lucro mensal de cada conta (quanto do que ela lucrou no mês vai pra
+          meta) — cada conta contribui de forma independente e se não houver lucro não vai
+          contribuir com a meta.
         </>
       }
     >
@@ -127,7 +128,7 @@ export function AllocationFormPage() {
                   <th className="px-4 py-3 w-12"></th>
                   <th className="px-4 py-3">Conta</th>
                   <th className="px-4 py-3 text-right">Saldo</th>
-                  <th className="px-4 py-3 w-40 text-right">% da evolução mensal</th>
+                  <th className="px-4 py-3 w-40 text-right">% do Saldo positivo</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">

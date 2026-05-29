@@ -125,7 +125,7 @@ export function BacktestResultsPage() {
         <Spinner label="Carregando backtest…" />
       ) : result ? (
         <div className="space-y-8">
-          <KpiCards result={result} accountLabel={accountLabel} />
+          <KpiCards result={result} />
           <VaultChart result={result} />
           <MonthlyTable result={result} accountLabel={accountLabel} accountPct={accountPct} />
         </div>
@@ -301,17 +301,10 @@ function ManageAccountsModal({
   )
 }
 
-function KpiCards({
-  result,
-  accountLabel,
-}: {
-  result: BacktestResult
-  accountLabel: (id: string) => string
-}) {
+function KpiCards({ result }: { result: BacktestResult }) {
   const s = result.summary
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
-      <Kpi label="Meses cumpridos" value={`${Math.round(s.completed_months_pct * 100)}%`} />
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
       <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm lg:col-span-1">
         <div className="text-xs font-medium uppercase tracking-wide text-slate-500">
           Saldo do baú
@@ -334,10 +327,6 @@ function KpiCards({
           {s.goal_reached ? 'Sim' : 'Não'}
         </span>
       </div>
-      <Kpi
-        label="Conta com pior aproveitamento"
-        value={s.worst_account_id ? accountLabel(s.worst_account_id) : '—'}
-      />
     </div>
   )
 }
