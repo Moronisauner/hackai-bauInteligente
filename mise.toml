@@ -48,12 +48,11 @@ run = "docker compose -f infra/docker-compose.yml down -v && docker compose -f i
 dir = "{{ config_root }}"
 
 [tasks.db-cleanup]
-description = "Mantém só um cliente e apaga o resto da massa (manual). Override: KEEP_USER_ID=<hash> mise run db-cleanup"
+description = "Mantém só os clientes/contas fixados em infra/cleanup.sql e apaga o resto da massa (manual)."
 dir = "{{ config_root }}"
-env = { KEEP_USER_ID = "695a8cddb2c3fcf4d0536663f8cfca8f4d147f14d1af5e4835c2aeb82b80ce84" }
 run = """
 docker compose -f infra/docker-compose.yml exec -T postgres \
-  psql -U hackai -d hackai -v ON_ERROR_STOP=1 -v keep_user_id="$KEEP_USER_ID" \
+  psql -U hackai -d hackai -v ON_ERROR_STOP=1 \
   < infra/cleanup.sql
 """
 

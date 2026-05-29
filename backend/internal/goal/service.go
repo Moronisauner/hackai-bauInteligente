@@ -176,6 +176,41 @@ func (s *Service) RemoveAllocation(ctx context.Context, goalID, accountID string
 	return nil
 }
 
+// Delete remove atomicamente um objetivo e tudo que pende dele: movimentos do
+// baú, baú e alocações. As FKs não têm ON DELETE CASCADE, então a ordem importa.
+// Retorna ErrNotFound se o objetivo não existir.
+func (s *Service) Delete(ctx context.Context, goalID string) error {
+	tx, err := s.Pool.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("goal: begin tx: %w", err)
+	}
+	defer tx.Rollback(ctx) //nolint:errcheck // rollback é no-op após commit
+
+	if _, err := tx.Exec(ctx, `
+		DELETE FROM goal_vault_movements
+		WHERE vault_id IN (SELECT id FROM goal_vaults WHERE goal_id = $1)`, goalID); err != nil {
+		return fmt.Errorf("goal: delete vault movements: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM goal_vaults WHERE goal_id = $1`, goalID); err != nil {
+		return fmt.Errorf("goal: delete vault: %w", err)
+	}
+	if _, err := tx.Exec(ctx, `DELETE FROM goal_allocations WHERE goal_id = $1`, goalID); err != nil {
+		return fmt.Errorf("goal: delete allocations: %w", err)
+	}
+	ct, err := tx.Exec(ctx, `DELETE FROM goals WHERE id = $1`, goalID)
+	if err != nil {
+		return fmt.Errorf("goal: delete goal: %w", err)
+	}
+	if ct.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("goal: commit: %w", err)
+	}
+	return nil
+}
+
 // validate aplica as regras de RF-03/RF-04 sobre a entrada.
 func validate(in CreateInput) error {
 	if in.UserID == "" {

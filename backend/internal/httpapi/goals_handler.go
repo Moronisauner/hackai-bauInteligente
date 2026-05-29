@@ -247,6 +247,32 @@ func (s *Server) GetGoal(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, dto)
 }
 
+// DeleteGoal remove um objetivo e tudo que pende dele (baú, movimentos e
+// alocações). 404 se o objetivo não existir.
+//
+//	@Summary	Remove um objetivo
+//	@Tags		goals
+//	@Produce	json
+//	@Param		goalID	path	string	true	"ID do objetivo"
+//	@Success	204
+//	@Failure	404	{object}	map[string]string
+//	@Failure	500	{object}	map[string]string
+//	@Router		/goals/{goalID} [delete]
+func (s *Server) DeleteGoal(w http.ResponseWriter, r *http.Request) {
+	goalID := chi.URLParam(r, "goalID")
+
+	if err := s.goals.Delete(r.Context(), goalID); err != nil {
+		if goal.IsNotFound(err) {
+			writeError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		writeError(w, http.StatusInternalServerError, "failed to delete goal")
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // AddAllocationRequest é o corpo do POST /goals/{goalID}/allocations.
 type AddAllocationRequest struct {
 	AccountID  string `json:"account_id"`

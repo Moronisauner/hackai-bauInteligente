@@ -79,6 +79,12 @@ export function getGoal(goalID: string): Promise<Goal> {
   return request<Goal>(`/goals/${encodeURIComponent(goalID)}`)
 }
 
+export function deleteGoal(goalID: string): Promise<void> {
+  return request<void>(`/goals/${encodeURIComponent(goalID)}`, {
+    method: 'DELETE',
+  })
+}
+
 export function addGoalAllocation(
   goalID: string,
   body: { account_id: string; percentage: number },
