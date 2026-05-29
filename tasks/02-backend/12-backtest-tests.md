@@ -13,7 +13,7 @@ Cobrir o `backtest.Run` com cenários sintéticos que exercitam falha, sucesso, 
    - **falha total:** saldo R$10 sempre → 3 `FAILED_INSUFFICIENT_BALANCE` com `Amount = 0`.
    - **falha intermitente:** 2 contas, 50% cada, R$500 cada/mês por 4 meses; conta A tem saldo só nos meses pares → A tem 2 COMPLETED + 2 FAILED, B tem 4 COMPLETED.
    - **saldo decrescente:** 1 conta, R$1000/mês, saldo inicial R$2500 — espera 2 COMPLETED e 1 FAILED no terceiro mês (saldo - sacado = 500 < 1000).
-   - **withdrawal_day fora do mês corrente:** start `2024-01-31`, withdrawal_day `31`, duration `3` — confirmar que cada `MovementDate` cai no dia 31 ou no último dia válido (documentar comportamento de `time.AddDate`).
+   - **MovementDate sempre no dia 1:** start `2024-01-31`, duration `3` — confirmar que cada `MovementDate` cai no dia 1 e coincide com `ReferenceMonth`.
 
 ## Critério de aceite
 - [ ] `go test ./internal/backtest/... -v` passa em todos os sub-tests.

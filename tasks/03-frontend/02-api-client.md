@@ -34,7 +34,6 @@ Centralizar chamadas ao backend em um cliente tipado, evitando `fetch` espalhado
      target_amount: string;
      duration_months: number;
      start_date: string;
-     withdrawal_day: number;
      vault_id: string;
      allocations: Allocation[];
    };

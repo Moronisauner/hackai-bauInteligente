@@ -42,7 +42,6 @@ type CreateInput struct {
 	TargetAmount   decimal.Decimal
 	DurationMonths int
 	StartDate      time.Time
-	WithdrawalDay  int
 	Allocations    []Allocation
 }
 
@@ -72,9 +71,9 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (goalID, vaultID s
 	vaultID = uuid.NewString()
 
 	_, err = tx.Exec(ctx, `
-		INSERT INTO goals (id, user_id, name, target_amount, duration_months, start_date, withdrawal_day)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		goalID, in.UserID, in.Name, in.TargetAmount, in.DurationMonths, in.StartDate, in.WithdrawalDay)
+		INSERT INTO goals (id, user_id, name, target_amount, duration_months, start_date)
+		VALUES ($1, $2, $3, $4, $5, $6)`,
+		goalID, in.UserID, in.Name, in.TargetAmount, in.DurationMonths, in.StartDate)
 	if err != nil {
 		return "", "", fmt.Errorf("goal: insert goal: %w", err)
 	}
@@ -117,9 +116,6 @@ func validate(in CreateInput) error {
 	}
 	if in.DurationMonths < 1 || in.DurationMonths > 60 {
 		return validationf("duration_months must be between 1 and 60")
-	}
-	if in.WithdrawalDay < 1 || in.WithdrawalDay > 28 {
-		return validationf("withdrawal_day must be between 1 and 28")
 	}
 	if len(in.Allocations) < 1 {
 		return validationf("at least one allocation is required")

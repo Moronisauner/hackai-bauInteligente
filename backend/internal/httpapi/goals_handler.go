@@ -25,7 +25,6 @@ type CreateGoalRequest struct {
 	TargetAmount   string              `json:"target_amount" example:"10000.00"`
 	DurationMonths int                 `json:"duration_months" example:"12"`
 	StartDate      string              `json:"start_date" example:"2025-01-01"`
-	WithdrawalDay  int                 `json:"withdrawal_day" example:"5"`
 	Allocations    []AllocationRequest `json:"allocations"`
 }
 
@@ -78,7 +77,6 @@ func (s *Server) CreateGoal(w http.ResponseWriter, r *http.Request) {
 		TargetAmount:   target,
 		DurationMonths: req.DurationMonths,
 		StartDate:      startDate,
-		WithdrawalDay:  req.WithdrawalDay,
 		Allocations:    allocs,
 	}
 
@@ -102,7 +100,6 @@ type GoalSummaryDTO struct {
 	TargetAmount   string `json:"target_amount"`
 	DurationMonths int    `json:"duration_months"`
 	StartDate      string `json:"start_date"`
-	WithdrawalDay  int    `json:"withdrawal_day"`
 }
 
 // ListGoalsByUser lista os objetivos de um cliente (resumo).
@@ -118,7 +115,7 @@ func (s *Server) ListGoalsByUser(w http.ResponseWriter, r *http.Request) {
 	userID := chi.URLParam(r, "userID")
 
 	const sql = `
-		SELECT id, name, target_amount, duration_months, start_date, withdrawal_day
+		SELECT id, name, target_amount, duration_months, start_date
 		FROM goals
 		WHERE user_id = $1
 		ORDER BY created_at DESC`
@@ -137,7 +134,7 @@ func (s *Server) ListGoalsByUser(w http.ResponseWriter, r *http.Request) {
 			target    decimal.Decimal
 			startDate time.Time
 		)
-		if err := rows.Scan(&g.GoalID, &g.Name, &target, &g.DurationMonths, &startDate, &g.WithdrawalDay); err != nil {
+		if err := rows.Scan(&g.GoalID, &g.Name, &target, &g.DurationMonths, &startDate); err != nil {
 			writeError(w, http.StatusInternalServerError, "failed to scan goal")
 			return
 		}
@@ -172,7 +169,6 @@ type GoalDTO struct {
 	TargetAmount   string              `json:"target_amount"`
 	DurationMonths int                 `json:"duration_months"`
 	StartDate      string              `json:"start_date"`
-	WithdrawalDay  int                 `json:"withdrawal_day"`
 	VaultID        string              `json:"vault_id"`
 	Allocations    []GoalAllocationDTO `json:"allocations"`
 }
@@ -199,12 +195,12 @@ func (s *Server) GetGoal(w http.ResponseWriter, r *http.Request) {
 	)
 	err := s.pool.QueryRow(ctx, `
 		SELECT g.id, g.user_id, g.name, g.target_amount, g.duration_months,
-		       g.start_date, g.withdrawal_day, v.id
+		       g.start_date, v.id
 		FROM goals g
 		JOIN goal_vaults v ON v.goal_id = g.id
 		WHERE g.id = $1`, goalID,
 	).Scan(&dto.GoalID, &dto.UserID, &dto.Name, &target, &dto.DurationMonths,
-		&startDate, &dto.WithdrawalDay, &dto.VaultID)
+		&startDate, &dto.VaultID)
 	if err != nil {
 		if errors.Is(err, pgx.ErrNoRows) {
 			writeError(w, http.StatusNotFound, "goal not found")

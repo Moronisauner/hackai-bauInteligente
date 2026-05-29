@@ -72,13 +72,13 @@ Responder a três perguntas:
 evolução(conta, mês) = saldo(conta, fim do mês) − saldo(conta, abertura do mês)
 ```
 
-Ambos os saldos via §6. "Abertura" = primeiro instante do mês de competência; "fim" = último instante do mês de competência (captura todas as transações do mês-calendário, mesmo que o `withdrawal_day` caia no meio).
+Ambos os saldos via §6. "Abertura" = primeiro instante do mês de competência; "fim" = último instante do mês de competência (captura todas as transações do mês-calendário). O saque ocorre sempre no **dia 1** do mês de competência.
 
 Para cada mês `m` do plano, para cada conta-fonte:
 1. Calcular a evolução do mês.
 2. Se `evolução <= 0` → **`SKIPPED_NO_GROWTH`**: a conta não cresceu no mês, nada é reservado (`amount = 0`).
 3. Senão, `reserva_alvo = round(evolução × percentual / 100, 2)`.
-4. Calcular o **saldo disponível no dia do saque** = `saldo(conta, movement_date)` − reservas já feitas por essa conta nos meses anteriores do backtest (o débito sintético reduz o disponível dos meses seguintes). Então:
+4. Calcular o **saldo disponível no dia do saque** = `saldo(conta, movement_date)` (= saldo na abertura do mês, pois o saque é no dia 1) − reservas já feitas por essa conta nos meses anteriores do backtest (o débito sintético reduz o disponível dos meses seguintes). Então:
    - `disponível <= 0` → **`FAILED_INSUFFICIENT_BALANCE`**: a conta evoluiu mas não há saldo disponível; reserva 0.
    - `disponível >= reserva_alvo` → **`COMPLETED`**: reserva o alvo cheio.
    - `0 < disponível < reserva_alvo` → **`PARTIAL`**: reserva apenas o disponível (nunca move mais do que há na conta).
@@ -125,7 +125,6 @@ CREATE TABLE goals (
     target_amount   NUMERIC(18, 2) NOT NULL,
     duration_months INTEGER NOT NULL,
     start_date      DATE NOT NULL,
-    withdrawal_day  INTEGER NOT NULL DEFAULT 1,  -- dia do mês para o saque
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
@@ -150,7 +149,7 @@ CREATE TABLE goal_vault_movements (
     vault_id          VARCHAR(64) NOT NULL REFERENCES goal_vaults(id),
     source_account_id VARCHAR(64) NOT NULL,  -- bank_accounts.id de origem
     reference_month   DATE NOT NULL,         -- mês de competência (primeiro dia)
-    movement_date     DATE NOT NULL,         -- data efetiva do saque simulado
+    movement_date     DATE NOT NULL,         -- data efetiva do saque simulado (sempre o dia 1)
     amount            NUMERIC(18, 2) NOT NULL,
     -- COMPLETED | PARTIAL | SKIPPED_NO_GROWTH | FAILED_INSUFFICIENT_BALANCE
     status            VARCHAR(40) NOT NULL,
@@ -190,10 +189,9 @@ Como a massa é histórica, **a aplicação não pode usar `NOW()` como referên
 
 - **Saldo inicial assumido como zero:** quão distorcido fica o backtest? Talvez precisemos calibrar com um saldo inicial sintético baseado em `balances_history` mais antigo.
 - **Múltiplas moedas:** schema permite, mas a POC assume `BRL`. Filtrar `currency = 'BRL'`?
-- **Dia do saque (`withdrawal_day`):** se cair em fim de semana/feriado, antecipa, posterga, ou ignora? Proposta inicial: usa o dia exato sem ajuste — é POC.
+- **Dia do saque:** o saque ocorre sempre no **dia 1** do mês de competência — não é mais configurável.
 - **Granularidade do percentual:** inteiro (1–100) é suficiente, ou precisamos de uma casa decimal?
-- **Janela da evolução mensal (RF-05):** medimos a evolução pelo mês-calendário cheio (saldo do fim − saldo da abertura do mês de competência), independente do `withdrawal_day`. O saque/reserva ocorre no `withdrawal_day` e é limitado ao saldo disponível naquele dia. Alternativa não adotada: medir de um `withdrawal_day` ao próximo.
-- **Descasamento evolução × disponível:** a evolução considera o mês inteiro, mas o saque é no `withdrawal_day` (meio do mês). Logo uma conta pode ter evolução positiva no mês e ainda assim reservar parcial/zero se o saldo no dia do saque for menor. É o comportamento desejado (não move mais do que há disponível).
+- **Janela da evolução mensal (RF-05):** medimos a evolução pelo mês-calendário cheio (saldo do fim − saldo da abertura do mês de competência). O saque/reserva ocorre no dia 1 e é limitado ao saldo disponível nesse dia (= saldo na abertura do mês).
 - **Múltiplos objetivos por cliente:** suportado pelo schema, mas a UI da POC pode focar em um objetivo de cada vez para simplificar.
 
 ## 12. Próximos passos

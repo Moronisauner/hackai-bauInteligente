@@ -5,7 +5,7 @@ import { useConfig } from '../lib/useConfig'
 import { parseBRLInput } from '../lib/format'
 import { Button, PageShell } from '../components/ui'
 
-type Field = 'name' | 'targetAmount' | 'durationMonths' | 'startDate' | 'withdrawalDay'
+type Field = 'name' | 'targetAmount' | 'durationMonths' | 'startDate'
 
 export function GoalFormPage() {
   const { userID = '' } = useParams()
@@ -16,13 +16,11 @@ export function GoalFormPage() {
   const [targetAmount, setTargetAmount] = useState('')
   const [durationMonths, setDurationMonths] = useState('12')
   const [startDate, setStartDate] = useState('')
-  const [withdrawalDay, setWithdrawalDay] = useState('1')
   const [touched, setTouched] = useState<Record<Field, boolean>>({
     name: false,
     targetAmount: false,
     durationMonths: false,
     startDate: false,
-    withdrawalDay: false,
   })
 
   // Default de start_date = POC_REFERENCE_DATE assim que a config carrega.
@@ -42,12 +40,8 @@ export function GoalFormPage() {
 
     if (!effectiveStartDate) e.startDate = 'Informe a data de início.'
 
-    const day = Number(withdrawalDay)
-    if (!Number.isInteger(day) || day < 1 || day > 28)
-      e.withdrawalDay = 'Entre 1 e 28.'
-
     return e
-  }, [name, targetAmount, durationMonths, effectiveStartDate, withdrawalDay])
+  }, [name, targetAmount, durationMonths, effectiveStartDate])
 
   const isValid = Object.keys(errors).length === 0
 
@@ -62,7 +56,6 @@ export function GoalFormPage() {
         targetAmount: true,
         durationMonths: true,
         startDate: true,
-        withdrawalDay: true,
       })
       return
     }
@@ -71,7 +64,6 @@ export function GoalFormPage() {
       target_amount: parseBRLInput(targetAmount),
       duration_months: Number(durationMonths),
       start_date: effectiveStartDate,
-      withdrawal_day: Number(withdrawalDay),
     }
     navigate(`/users/${userID}/goals/new/allocations`, { state: draft })
   }
@@ -115,37 +107,20 @@ export function GoalFormPage() {
           />
         </FormField>
 
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
-          <FormField
-            label="Duração (meses)"
-            error={touched.durationMonths ? errors.durationMonths : undefined}
-          >
-            <input
-              type="number"
-              min={1}
-              max={60}
-              value={durationMonths}
-              onChange={(e) => setDurationMonths(e.target.value)}
-              onBlur={() => markTouched('durationMonths')}
-              className={inputClass(touched.durationMonths && !!errors.durationMonths)}
-            />
-          </FormField>
-
-          <FormField
-            label="Dia da retirada"
-            error={touched.withdrawalDay ? errors.withdrawalDay : undefined}
-          >
-            <input
-              type="number"
-              min={1}
-              max={28}
-              value={withdrawalDay}
-              onChange={(e) => setWithdrawalDay(e.target.value)}
-              onBlur={() => markTouched('withdrawalDay')}
-              className={inputClass(touched.withdrawalDay && !!errors.withdrawalDay)}
-            />
-          </FormField>
-        </div>
+        <FormField
+          label="Duração (meses)"
+          error={touched.durationMonths ? errors.durationMonths : undefined}
+        >
+          <input
+            type="number"
+            min={1}
+            max={60}
+            value={durationMonths}
+            onChange={(e) => setDurationMonths(e.target.value)}
+            onBlur={() => markTouched('durationMonths')}
+            className={inputClass(touched.durationMonths && !!errors.durationMonths)}
+          />
+        </FormField>
 
         <FormField
           label="Data de início"

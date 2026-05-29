@@ -42,7 +42,6 @@ export type Goal = {
   target_amount: string
   duration_months: number
   start_date: string
-  withdrawal_day: number
   vault_id: string
   allocations: Allocation[]
 }
@@ -54,7 +53,6 @@ export type CreateGoalInput = {
   target_amount: string
   duration_months: number
   start_date: string
-  withdrawal_day: number
   allocations: { account_id: string; percentage: number }[]
 }
 
@@ -70,7 +68,6 @@ export type GoalDraft = {
   target_amount: string // já normalizado (decimal "1234.56")
   duration_months: number
   start_date: string
-  withdrawal_day: number
 }
 
 export type BacktestMovementStatus =

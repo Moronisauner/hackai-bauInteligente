@@ -12,12 +12,10 @@ Tela `/users/:userID/goals/new` com formulário dos dados do objetivo (jornada i
    - `target_amount` (input texto com máscara BRL; converter via `parseBRLInput` antes de enviar)
    - `duration_months` (number, 1–60)
    - `start_date` (date input; default = `POC_REFERENCE_DATE`)
-   - `withdrawal_day` (number, 1–28; default 1)
 2. Validações client-side com mensagens inline:
    - `name` não vazio
    - `target_amount > 0`
    - `duration_months` 1–60
-   - `withdrawal_day` 1–28
 3. **Não** submete ainda ao backend — esta tela é o **step 1 do wizard**. Ao clicar "Próximo", guardar o estado parcial em `useState` no componente pai (ou em `useNavigate(state)`) e ir pra `/users/:userID/goals/new/allocations`.
 4. Botão "Voltar" volta pra `/users/:userID`.
 

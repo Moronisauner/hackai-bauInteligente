@@ -49,23 +49,22 @@ type BacktestResultDTO struct {
 
 // goalPlan agrega os dados de um goal necessários ao backtest.
 type goalPlan struct {
-	vaultID      string
-	target       decimal.Decimal
-	duration     int
-	startDate    time.Time
-	withdrawDay  int
-	allocations  []backtest.Allocation
+	vaultID     string
+	target      decimal.Decimal
+	duration    int
+	startDate   time.Time
+	allocations []backtest.Allocation
 }
 
 // loadGoalPlan carrega goal + vault + allocations e monta o backtest.Plan.
 func (s *Server) loadGoalPlan(ctx context.Context, goalID string) (goalPlan, error) {
 	var gp goalPlan
 	err := s.pool.QueryRow(ctx, `
-		SELECT v.id, g.target_amount, g.duration_months, g.start_date, g.withdrawal_day
+		SELECT v.id, g.target_amount, g.duration_months, g.start_date
 		FROM goals g
 		JOIN goal_vaults v ON v.goal_id = g.id
 		WHERE g.id = $1`, goalID,
-	).Scan(&gp.vaultID, &gp.target, &gp.duration, &gp.startDate, &gp.withdrawDay)
+	).Scan(&gp.vaultID, &gp.target, &gp.duration, &gp.startDate)
 	if err != nil {
 		return goalPlan{}, err
 	}
@@ -119,7 +118,6 @@ func (s *Server) RunBacktest(w http.ResponseWriter, r *http.Request) {
 	plan := backtest.Plan{
 		StartDate:      gp.startDate,
 		DurationMonths: gp.duration,
-		WithdrawalDay:  gp.withdrawDay,
 		TargetAmount:   gp.target,
 		Allocations:    gp.allocations,
 	}

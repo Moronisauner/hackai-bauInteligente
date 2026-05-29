@@ -17,7 +17,7 @@ Reescrever `engine_test.go` para cobrir reserva baseada em evolução, com uma
    - **Evolução positiva, mas saldo no dia do saque < alvo** → `PARTIAL`, `Amount = disponível`.
    - **Evolução positiva, mas saldo disponível <= 0** → `FAILED_INSUFFICIENT_BALANCE`.
    - **Acumulação entre meses**: reservas anteriores reduzem o disponível dos meses seguintes.
-3. Manter o caso de `withdrawal_day` fora do mês (dia 31) se ainda fizer sentido.
+3. Validar que `MovementDate` é sempre o dia 1 do mês de competência (= `ReferenceMonth`).
 
 ## Critério de aceite
 - [ ] `go test ./internal/backtest/...` passa.

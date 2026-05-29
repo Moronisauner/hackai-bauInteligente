@@ -1,6 +1,6 @@
 basePath: /
 definitions:
-  internal_httpapi.AccountDTO:
+  httpapi.AccountDTO:
     properties:
       account_id:
         type: string
@@ -23,7 +23,7 @@ definitions:
       type:
         type: string
     type: object
-  internal_httpapi.AllocationRequest:
+  httpapi.AllocationRequest:
     properties:
       account_id:
         type: string
@@ -31,7 +31,7 @@ definitions:
         example: 50
         type: integer
     type: object
-  internal_httpapi.BacktestMovementDTO:
+  httpapi.BacktestMovementDTO:
     properties:
       account_id:
         type: string
@@ -44,20 +44,20 @@ definitions:
       status:
         type: string
     type: object
-  internal_httpapi.BacktestResultDTO:
+  httpapi.BacktestResultDTO:
     properties:
       movements:
         items:
-          $ref: '#/definitions/internal_httpapi.BacktestMovementDTO'
+          $ref: '#/definitions/httpapi.BacktestMovementDTO'
         type: array
       summary:
-        $ref: '#/definitions/internal_httpapi.BacktestSummaryDTO'
+        $ref: '#/definitions/httpapi.BacktestSummaryDTO'
       vault_evolution:
         items:
-          $ref: '#/definitions/internal_httpapi.VaultEvolutionDTO'
+          $ref: '#/definitions/httpapi.VaultEvolutionDTO'
         type: array
     type: object
-  internal_httpapi.BacktestSummaryDTO:
+  httpapi.BacktestSummaryDTO:
     properties:
       completed_count:
         type: integer
@@ -77,17 +77,17 @@ definitions:
       worst_account_id:
         type: string
     type: object
-  internal_httpapi.ConfigDTO:
+  httpapi.ConfigDTO:
     properties:
       poc_reference_date:
         example: "2025-01-01"
         type: string
     type: object
-  internal_httpapi.CreateGoalRequest:
+  httpapi.CreateGoalRequest:
     properties:
       allocations:
         items:
-          $ref: '#/definitions/internal_httpapi.AllocationRequest'
+          $ref: '#/definitions/httpapi.AllocationRequest'
         type: array
       duration_months:
         example: 12
@@ -101,18 +101,15 @@ definitions:
       target_amount:
         example: "10000.00"
         type: string
-      withdrawal_day:
-        example: 5
-        type: integer
     type: object
-  internal_httpapi.CreateGoalResponse:
+  httpapi.CreateGoalResponse:
     properties:
       goal_id:
         type: string
       vault_id:
         type: string
     type: object
-  internal_httpapi.GoalAllocationDTO:
+  httpapi.GoalAllocationDTO:
     properties:
       account_id:
         type: string
@@ -125,11 +122,11 @@ definitions:
       type:
         type: string
     type: object
-  internal_httpapi.GoalDTO:
+  httpapi.GoalDTO:
     properties:
       allocations:
         items:
-          $ref: '#/definitions/internal_httpapi.GoalAllocationDTO'
+          $ref: '#/definitions/httpapi.GoalAllocationDTO'
         type: array
       duration_months:
         type: integer
@@ -145,10 +142,8 @@ definitions:
         type: string
       vault_id:
         type: string
-      withdrawal_day:
-        type: integer
     type: object
-  internal_httpapi.GoalSummaryDTO:
+  httpapi.GoalSummaryDTO:
     properties:
       duration_months:
         type: integer
@@ -160,10 +155,8 @@ definitions:
         type: string
       target_amount:
         type: string
-      withdrawal_day:
-        type: integer
     type: object
-  internal_httpapi.UserDTO:
+  httpapi.UserDTO:
     properties:
       accounts_count:
         type: integer
@@ -172,7 +165,7 @@ definitions:
       user_id:
         type: string
     type: object
-  internal_httpapi.VaultEvolutionDTO:
+  httpapi.VaultEvolutionDTO:
     properties:
       balance:
         example: "1000.00"
@@ -195,7 +188,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_httpapi.ConfigDTO'
+            $ref: '#/definitions/httpapi.ConfigDTO'
       summary: Configuração pública da POC
       tags:
       - infra
@@ -213,7 +206,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_httpapi.GoalDTO'
+            $ref: '#/definitions/httpapi.GoalDTO'
         "404":
           description: Not Found
           schema:
@@ -243,7 +236,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_httpapi.BacktestResultDTO'
+            $ref: '#/definitions/httpapi.BacktestResultDTO'
         "404":
           description: Not Found
           schema:
@@ -272,7 +265,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/internal_httpapi.BacktestResultDTO'
+            $ref: '#/definitions/httpapi.BacktestResultDTO'
         "404":
           description: Not Found
           schema:
@@ -322,7 +315,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_httpapi.UserDTO'
+              $ref: '#/definitions/httpapi.UserDTO'
             type: array
         "500":
           description: Internal Server Error
@@ -348,7 +341,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_httpapi.AccountDTO'
+              $ref: '#/definitions/httpapi.AccountDTO'
             type: array
         "500":
           description: Internal Server Error
@@ -374,7 +367,7 @@ paths:
           description: OK
           schema:
             items:
-              $ref: '#/definitions/internal_httpapi.GoalSummaryDTO'
+              $ref: '#/definitions/httpapi.GoalSummaryDTO'
             type: array
         "500":
           description: Internal Server Error
@@ -399,14 +392,14 @@ paths:
         name: body
         required: true
         schema:
-          $ref: '#/definitions/internal_httpapi.CreateGoalRequest'
+          $ref: '#/definitions/httpapi.CreateGoalRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/internal_httpapi.CreateGoalResponse'
+            $ref: '#/definitions/httpapi.CreateGoalResponse'
         "400":
           description: Bad Request
           schema:

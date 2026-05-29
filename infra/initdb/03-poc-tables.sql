@@ -7,7 +7,6 @@ CREATE TABLE goals (
     target_amount   NUMERIC(18, 2) NOT NULL,
     duration_months INTEGER NOT NULL CHECK (duration_months BETWEEN 1 AND 60),
     start_date      DATE NOT NULL,
-    withdrawal_day  INTEGER NOT NULL DEFAULT 1,
     created_at      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

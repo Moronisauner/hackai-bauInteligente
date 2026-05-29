@@ -8,10 +8,11 @@
 // mês) e reserva-se `evolution × percentage / 100`. Só evolução positiva gera
 // reserva; mês sem crescimento é SKIPPED_NO_GROWTH.
 //
-// O alvo reservado é limitado pelo saldo disponível no dia do saque. Para
-// simular que as reservas sintéticas do backtest de fato saíram da conta, a
-// engine acumula internamente, por conta, quanto já foi "reservado" e calcula
-// o saldo disponível:
+// O saque ocorre sempre no dia 1 do mês de competência (movementDate =
+// primeiro dia do mês). O alvo reservado é limitado pelo saldo disponível
+// nesse dia. Para simular que as reservas sintéticas do backtest de fato
+// saíram da conta, a engine acumula internamente, por conta, quanto já foi
+// "reservado" e calcula o saldo disponível:
 //
 //	available = realBalance(account, movementDate) - reserved[account]
 //
@@ -50,7 +51,6 @@ type Allocation struct {
 type Plan struct {
 	StartDate      time.Time
 	DurationMonths int
-	WithdrawalDay  int
 	TargetAmount   decimal.Decimal
 	Allocations    []Allocation
 }
@@ -58,7 +58,7 @@ type Plan struct {
 // Movement é o resultado de uma tentativa de saque de uma conta num mês.
 type Movement struct {
 	ReferenceMonth time.Time       // primeiro dia do mês de competência
-	MovementDate   time.Time       // data efetiva (mês de competência com dia = WithdrawalDay)
+	MovementDate   time.Time       // data efetiva (sempre o dia 1 do mês de competência)
 	AccountID      string          // conta-fonte
 	Amount         decimal.Decimal // valor reservado (0 em SKIPPED/FAILED)
 	Status         string          // StatusCompleted | StatusPartial | StatusSkipped | StatusFailed
@@ -74,13 +74,12 @@ func Run(ctx context.Context, plan Plan, balance BalanceFn) ([]Movement, error) 
 	movements := make([]Movement, 0, plan.DurationMonths*len(plan.Allocations))
 
 	for i := 0; i < plan.DurationMonths; i++ {
-		// movementDate = StartDate + i meses, mantendo o dia = WithdrawalDay.
-		// §11: dia exato, sem ajuste para fim de semana/feriado.
+		// O saque ocorre sempre no dia 1: movementDate = primeiro dia do mês de
+		// competência (StartDate + i meses). §11: dia exato, sem ajuste.
 		base := plan.StartDate.AddDate(0, i, 0)
-		movementDate := time.Date(base.Year(), base.Month(), plan.WithdrawalDay,
+		referenceMonth := time.Date(base.Year(), base.Month(), 1,
 			0, 0, 0, 0, plan.StartDate.Location())
-		referenceMonth := time.Date(movementDate.Year(), movementDate.Month(), 1,
-			0, 0, 0, 0, plan.StartDate.Location())
+		movementDate := referenceMonth
 		// Janela da evolução (§11): saldo no primeiro instante do mês de
 		// competência vs. saldo no último instante do mês.
 		monthOpen := referenceMonth
@@ -120,11 +119,9 @@ func Run(ctx context.Context, plan Plan, balance BalanceFn) ([]Movement, error) 
 				continue
 			}
 
-			realBal, err := balance(ctx, alloc.AccountID, movementDate)
-			if err != nil {
-				return nil, err
-			}
-			available := realBal.Sub(reserved[alloc.AccountID])
+			// movementDate == monthOpen (dia 1), logo o saldo no dia do saque é o
+			// próprio openBal já consultado.
+			available := openBal.Sub(reserved[alloc.AccountID])
 
 			switch {
 			case available.LessThanOrEqual(decimal.Zero):

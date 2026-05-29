@@ -28,7 +28,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_httpapi.ConfigDTO"
+                            "$ref": "#/definitions/httpapi.ConfigDTO"
                         }
                     }
                 }
@@ -56,7 +56,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_httpapi.GoalDTO"
+                            "$ref": "#/definitions/httpapi.GoalDTO"
                         }
                     },
                     "404": {
@@ -102,7 +102,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_httpapi.BacktestResultDTO"
+                            "$ref": "#/definitions/httpapi.BacktestResultDTO"
                         }
                     },
                     "404": {
@@ -146,7 +146,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/internal_httpapi.BacktestResultDTO"
+                            "$ref": "#/definitions/httpapi.BacktestResultDTO"
                         }
                     },
                     "404": {
@@ -224,7 +224,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_httpapi.UserDTO"
+                                "$ref": "#/definitions/httpapi.UserDTO"
                             }
                         }
                     },
@@ -264,7 +264,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_httpapi.AccountDTO"
+                                "$ref": "#/definitions/httpapi.AccountDTO"
                             }
                         }
                     },
@@ -304,7 +304,7 @@ const docTemplate = `{
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/internal_httpapi.GoalSummaryDTO"
+                                "$ref": "#/definitions/httpapi.GoalSummaryDTO"
                             }
                         }
                     },
@@ -344,7 +344,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/internal_httpapi.CreateGoalRequest"
+                            "$ref": "#/definitions/httpapi.CreateGoalRequest"
                         }
                     }
                 ],
@@ -352,7 +352,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/internal_httpapi.CreateGoalResponse"
+                            "$ref": "#/definitions/httpapi.CreateGoalResponse"
                         }
                     },
                     "400": {
@@ -378,7 +378,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "internal_httpapi.AccountDTO": {
+        "httpapi.AccountDTO": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -412,7 +412,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.AllocationRequest": {
+        "httpapi.AllocationRequest": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -424,7 +424,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.BacktestMovementDTO": {
+        "httpapi.BacktestMovementDTO": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -443,27 +443,27 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.BacktestResultDTO": {
+        "httpapi.BacktestResultDTO": {
             "type": "object",
             "properties": {
                 "movements": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_httpapi.BacktestMovementDTO"
+                        "$ref": "#/definitions/httpapi.BacktestMovementDTO"
                     }
                 },
                 "summary": {
-                    "$ref": "#/definitions/internal_httpapi.BacktestSummaryDTO"
+                    "$ref": "#/definitions/httpapi.BacktestSummaryDTO"
                 },
                 "vault_evolution": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_httpapi.VaultEvolutionDTO"
+                        "$ref": "#/definitions/httpapi.VaultEvolutionDTO"
                     }
                 }
             }
         },
-        "internal_httpapi.BacktestSummaryDTO": {
+        "httpapi.BacktestSummaryDTO": {
             "type": "object",
             "properties": {
                 "completed_count": {
@@ -492,7 +492,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.ConfigDTO": {
+        "httpapi.ConfigDTO": {
             "type": "object",
             "properties": {
                 "poc_reference_date": {
@@ -501,13 +501,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.CreateGoalRequest": {
+        "httpapi.CreateGoalRequest": {
             "type": "object",
             "properties": {
                 "allocations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_httpapi.AllocationRequest"
+                        "$ref": "#/definitions/httpapi.AllocationRequest"
                     }
                 },
                 "duration_months": {
@@ -525,14 +525,10 @@ const docTemplate = `{
                 "target_amount": {
                     "type": "string",
                     "example": "10000.00"
-                },
-                "withdrawal_day": {
-                    "type": "integer",
-                    "example": 5
                 }
             }
         },
-        "internal_httpapi.CreateGoalResponse": {
+        "httpapi.CreateGoalResponse": {
             "type": "object",
             "properties": {
                 "goal_id": {
@@ -543,7 +539,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.GoalAllocationDTO": {
+        "httpapi.GoalAllocationDTO": {
             "type": "object",
             "properties": {
                 "account_id": {
@@ -563,13 +559,13 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.GoalDTO": {
+        "httpapi.GoalDTO": {
             "type": "object",
             "properties": {
                 "allocations": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/internal_httpapi.GoalAllocationDTO"
+                        "$ref": "#/definitions/httpapi.GoalAllocationDTO"
                     }
                 },
                 "duration_months": {
@@ -592,13 +588,10 @@ const docTemplate = `{
                 },
                 "vault_id": {
                     "type": "string"
-                },
-                "withdrawal_day": {
-                    "type": "integer"
                 }
             }
         },
-        "internal_httpapi.GoalSummaryDTO": {
+        "httpapi.GoalSummaryDTO": {
             "type": "object",
             "properties": {
                 "duration_months": {
@@ -615,13 +608,10 @@ const docTemplate = `{
                 },
                 "target_amount": {
                     "type": "string"
-                },
-                "withdrawal_day": {
-                    "type": "integer"
                 }
             }
         },
-        "internal_httpapi.UserDTO": {
+        "httpapi.UserDTO": {
             "type": "object",
             "properties": {
                 "accounts_count": {
@@ -635,7 +625,7 @@ const docTemplate = `{
                 }
             }
         },
-        "internal_httpapi.VaultEvolutionDTO": {
+        "httpapi.VaultEvolutionDTO": {
             "type": "object",
             "properties": {
                 "balance": {

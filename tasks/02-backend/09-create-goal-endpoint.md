@@ -15,7 +15,6 @@ Criar atomicamente: 1 `goal`, 1 `goal_vault`, N `goal_allocations` (RF-03, RF-04
        TargetAmount   decimal.Decimal
        DurationMonths int
        StartDate      time.Time
-       WithdrawalDay  int
        Allocations    []struct{ AccountID string; Percentage int }
    }
    func (s *Service) Create(ctx context.Context, in CreateInput) (goalID, vaultID string, err error)
@@ -23,7 +22,6 @@ Criar atomicamente: 1 `goal`, 1 `goal_vault`, N `goal_allocations` (RF-03, RF-04
 2. Validações (retornar erro tipado, mapear pra HTTP 400):
    - `TargetAmount > 0`
    - `DurationMonths BETWEEN 1 AND 60`
-   - `WithdrawalDay BETWEEN 1 AND 28` (evita problemas com mês de 28 dias; ajustar pra 31 só se time aceitar regra de "último dia" — vide §11 do PRD).
    - `len(Allocations) >= 1`
    - cada `Percentage BETWEEN 1 AND 100`
    - **soma dos percentuais == 100** (RF-04)

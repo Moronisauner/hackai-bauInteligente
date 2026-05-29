@@ -12,7 +12,6 @@ Função pura que, dado um plano e um provedor de saldo, produz a sequência de 
    type Plan struct {
        StartDate      time.Time
        DurationMonths int
-       WithdrawalDay  int
        TargetAmount   decimal.Decimal
        Allocations    []Allocation
    }
@@ -23,7 +22,7 @@ Função pura que, dado um plano e um provedor de saldo, produz a sequência de 
    }
    type Movement struct {
        ReferenceMonth time.Time      // primeiro dia do mês de competência
-       MovementDate   time.Time      // data efetiva (= ReferenceMonth com dia = WithdrawalDay)
+       MovementDate   time.Time      // data efetiva (= ReferenceMonth; saque sempre no dia 1)
        AccountID      string
        Amount         decimal.Decimal
        Status         string         // "COMPLETED" | "FAILED_INSUFFICIENT_BALANCE"
@@ -33,9 +32,8 @@ Função pura que, dado um plano e um provedor de saldo, produz a sequência de 
    ```
 2. Regra de iteração:
    - Para cada `i` em `0..DurationMonths-1`:
-     - `movementDate = StartDate.AddDate(0, i, 0)` ajustado pro dia = `WithdrawalDay`
-       (manter dia exato; vide §11 do PRD — sem ajuste pra fim de semana/feriado nesta POC).
-     - `referenceMonth = primeiro dia do mês de movementDate`
+     - `referenceMonth = primeiro dia do mês de StartDate.AddDate(0, i, 0)`
+     - `movementDate = referenceMonth` (o saque ocorre sempre no dia 1).
    - Para cada `Allocation` na ordem fornecida:
      - `bal := balance(ctx, alloc.AccountID, movementDate)`
      - Se `bal >= alloc.MonthlyAmount` → `Movement{Status: COMPLETED, Amount: MonthlyAmount}`

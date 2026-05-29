@@ -10,25 +10,20 @@ import (
 
 func dec(s string) decimal.Decimal { return decimal.RequireFromString(s) }
 
-// phasedBalance constrói uma BalanceFn a partir do saldo de cada conta nos três
+// phasedBalance constrói uma BalanceFn a partir do saldo de cada conta nos dois
 // instantes que a engine consulta a cada mês:
-//   - [0] open  = primeiro instante do mês (dia 1, 00:00:00.000000000)
+//   - [0] open  = primeiro instante do mês (dia 1, 00:00:00.000000000); como o
+//     saque ocorre sempre no dia 1, este é também o saldo no dia do saque.
 //   - [1] close = último instante do mês (…23:59:59.999999999, Nanosecond != 0)
-//   - [2] move  = dia do saque (WithdrawalDay; exige WithdrawalDay != 1)
 //
 // O saldo independe do mês de competência, o que basta para exercitar a regra
 // (evolução → fatia → limite do disponível) e a acumulação entre meses.
-func phasedBalance(byAccount map[string][3]string) BalanceFn {
+func phasedBalance(byAccount map[string][2]string) BalanceFn {
 	return func(_ context.Context, accountID string, at time.Time) (decimal.Decimal, error) {
 		v := byAccount[accountID]
-		var idx int
-		switch {
-		case at.Nanosecond() != 0:
+		idx := 0 // open / dia do saque
+		if at.Nanosecond() != 0 {
 			idx = 1 // close
-		case at.Day() == 1:
-			idx = 0 // open
-		default:
-			idx = 2 // move
 		}
 		return dec(v[idx]), nil
 	}
@@ -39,16 +34,16 @@ func TestRun(t *testing.T) {
 	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 
 	t.Run("evolução positiva, saldo sobra → COMPLETED", func(t *testing.T) {
-		// open 1000 → close 2000: evolução 1000; pct 50 → alvo 500; disponível 5000.
+		// open 5000 → close 6000: evolução 1000; pct 50 → alvo 500; disponível
+		// (= saldo de abertura, pois o saque é no dia 1) 5000.
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 1,
-			WithdrawalDay:  5,
 			TargetAmount:   dec("10000"),
 			Allocations:    []Allocation{{AccountID: "A", Percentage: 50}},
 		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][3]string{
-			"A": {"1000", "2000", "5000"},
+		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
+			"A": {"5000", "6000"},
 		}))
 		if err != nil {
 			t.Fatal(err)
@@ -69,16 +64,15 @@ func TestRun(t *testing.T) {
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 1,
-			WithdrawalDay:  5,
 			TargetAmount:   dec("10000"),
 			Allocations: []Allocation{
 				{AccountID: "EQ", Percentage: 50},
 				{AccountID: "DROP", Percentage: 50},
 			},
 		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][3]string{
-			"EQ":   {"2000", "2000", "9000"},
-			"DROP": {"2000", "1000", "9000"},
+		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
+			"EQ":   {"2000", "2000"},
+			"DROP": {"2000", "1000"},
 		}))
 		if err != nil {
 			t.Fatal(err)
@@ -97,16 +91,16 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("evolução positiva, saldo no dia do saque < alvo → PARTIAL", func(t *testing.T) {
-		// open 0 → close 1000: evolução 1000; pct 100 → alvo 1000; disponível só 300.
+		// open 300 → close 1300: evolução 1000; pct 100 → alvo 1000; disponível
+		// (= saldo de abertura) só 300.
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 1,
-			WithdrawalDay:  5,
 			TargetAmount:   dec("10000"),
 			Allocations:    []Allocation{{AccountID: "A", Percentage: 100}},
 		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][3]string{
-			"A": {"0", "1000", "300"},
+		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
+			"A": {"300", "1300"},
 		}))
 		if err != nil {
 			t.Fatal(err)
@@ -120,16 +114,16 @@ func TestRun(t *testing.T) {
 	})
 
 	t.Run("evolução positiva, disponível <= 0 → FAILED_INSUFFICIENT_BALANCE", func(t *testing.T) {
-		// open 0 → close 1000: evolução 1000; pct 100 → alvo 1000; disponível 0.
+		// open 0 → close 1000: evolução 1000; pct 100 → alvo 1000; disponível
+		// (= saldo de abertura) 0.
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 1,
-			WithdrawalDay:  5,
 			TargetAmount:   dec("10000"),
 			Allocations:    []Allocation{{AccountID: "A", Percentage: 100}},
 		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][3]string{
-			"A": {"0", "1000", "0"},
+		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
+			"A": {"0", "1000"},
 		}))
 		if err != nil {
 			t.Fatal(err)
@@ -144,19 +138,18 @@ func TestRun(t *testing.T) {
 
 	t.Run("acumulação entre meses: reservas anteriores reduzem o disponível", func(t *testing.T) {
 		// 1 conta, pct 100, 3 meses. Cada mês: evolução 1000 (alvo 1000).
-		// Saldo real no dia do saque é constante 2500.
+		// Saldo de abertura (= dia do saque) constante 2500.
 		//   mês 0: disp 2500 >= 1000 → COMPLETED (reservado 1000)
 		//   mês 1: disp 2500-1000=1500 >= 1000 → COMPLETED (reservado 2000)
 		//   mês 2: disp 2500-2000=500 < 1000 → PARTIAL (amount 500)
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 3,
-			WithdrawalDay:  5,
 			TargetAmount:   dec("10000"),
 			Allocations:    []Allocation{{AccountID: "A", Percentage: 100}},
 		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][3]string{
-			"A": {"0", "1000", "2500"},
+		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
+			"A": {"2500", "3500"},
 		}))
 		if err != nil {
 			t.Fatal(err)
@@ -173,41 +166,30 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("withdrawal_day fora do mes: start 2024-01-31, day 31", func(t *testing.T) {
-		// Documenta o comportamento de time.AddDate: ao somar meses sobre um dia
-		// 31, fevereiro "transborda" para março. Com saldo crescente e alto, todos
-		// os meses são COMPLETED; aqui validamos só onde a MovementDate cai.
+	t.Run("MovementDate é sempre o dia 1 do mês de competência", func(t *testing.T) {
+		// O saque ocorre sempre no dia 1, mesmo quando StartDate cai noutro dia:
+		// MovementDate deve coincidir com ReferenceMonth (primeiro dia do mês).
 		plan := Plan{
 			StartDate:      time.Date(2024, 1, 31, 0, 0, 0, 0, time.UTC),
 			DurationMonths: 3,
-			WithdrawalDay:  31,
 			TargetAmount:   dec("10000"),
 			Allocations:    []Allocation{{AccountID: "A", Percentage: 50}},
 		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][3]string{
-			"A": {"1000", "2000", "100000"},
+		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
+			"A": {"100000", "200000"},
 		}))
 		if err != nil {
 			t.Fatal(err)
 		}
 		for i, mv := range got {
-			if mv.Status != StatusCompleted {
-				t.Errorf("movimento %d: esperado COMPLETED, got %s", i, mv.Status)
+			if mv.MovementDate.Day() != 1 {
+				t.Errorf("movimento %d: MovementDate %s não cai no dia 1",
+					i, mv.MovementDate.Format("2006-01-02"))
 			}
-			day := mv.MovementDate.Day()
-			lastValid := lastDayOfMonth(mv.MovementDate)
-			if day != 31 && day != lastValid {
-				t.Errorf("movimento %d: MovementDate %s não cai no dia 31 nem no último dia válido (%d)",
-					i, mv.MovementDate.Format("2006-01-02"), lastValid)
+			if !mv.MovementDate.Equal(mv.ReferenceMonth) {
+				t.Errorf("movimento %d: MovementDate %s difere de ReferenceMonth %s",
+					i, mv.MovementDate.Format("2006-01-02"), mv.ReferenceMonth.Format("2006-01-02"))
 			}
-			t.Logf("movimento %d -> MovementDate=%s ReferenceMonth=%s",
-				i, mv.MovementDate.Format("2006-01-02"), mv.ReferenceMonth.Format("2006-01-02"))
 		}
 	})
-}
-
-// lastDayOfMonth devolve o último dia do mês de t.
-func lastDayOfMonth(t time.Time) int {
-	firstOfNext := time.Date(t.Year(), t.Month(), 1, 0, 0, 0, 0, t.Location()).AddDate(0, 1, 0)
-	return firstOfNext.AddDate(0, 0, -1).Day()
 }
