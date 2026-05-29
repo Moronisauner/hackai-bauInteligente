@@ -71,6 +71,15 @@ export function BacktestResultsPage() {
     return (id: string) => map[id] ?? id
   }, [goal])
 
+  // Mapa account_id → percentual da evolução da conta que vai pra meta.
+  const accountPct = useMemo(() => {
+    const map: Record<string, number> = {}
+    for (const a of goal?.allocations ?? []) {
+      map[a.account_id] = a.percentage
+    }
+    return (id: string): number | undefined => map[id]
+  }, [goal])
+
   return (
     <PageShell
       title={goal ? goal.name : 'Resultado do backtest'}
@@ -96,7 +105,7 @@ export function BacktestResultsPage() {
         <div className="space-y-8">
           <KpiCards result={result} accountLabel={accountLabel} />
           <VaultChart result={result} />
-          <MonthlyTable result={result} accountLabel={accountLabel} />
+          <MonthlyTable result={result} accountLabel={accountLabel} accountPct={accountPct} />
         </div>
       ) : null}
     </PageShell>
@@ -209,9 +218,11 @@ const STATUS_STYLE: Record<
 function MonthlyTable({
   result,
   accountLabel,
+  accountPct,
 }: {
   result: BacktestResult
   accountLabel: (id: string) => string
+  accountPct: (id: string) => number | undefined
 }) {
   // Pivot: linhas = meses, colunas = contas. Célula = status + valor.
   const months = useMemo(
@@ -254,11 +265,15 @@ function MonthlyTable({
           <thead className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
             <tr>
               <th className="px-3 py-2">Mês</th>
-              {accountIDs.map((id) => (
-                <th key={id} className="px-3 py-2 whitespace-nowrap">
-                  {accountLabel(id)}
-                </th>
-              ))}
+              {accountIDs.map((id) => {
+                const pct = accountPct(id)
+                return (
+                  <th key={id} className="px-3 py-2 whitespace-nowrap">
+                    {accountLabel(id)}
+                    {pct != null && <span className="text-slate-400"> ({pct}%)</span>}
+                  </th>
+                )
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
