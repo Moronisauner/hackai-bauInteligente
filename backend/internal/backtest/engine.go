@@ -6,23 +6,12 @@
 // A reserva mensal de cada conta é uma fatia da EVOLUÇÃO da própria conta no
 // mês (RF-04, §11): mede-se a evolução = saldo(fim do mês) - saldo(início do
 // mês) e reserva-se `evolution × percentage / 100`. Só evolução positiva gera
-// reserva; mês sem crescimento é SKIPPED_NO_GROWTH.
+// reserva (SKIPPED_NO_GROWTH quando o mês não cresce); como a fatia reservada é
+// parte do próprio crescimento do mês, ela é sempre reservada por inteiro
+// (COMPLETED). O saque ocorre sempre no dia 1 do mês de competência
+// (movementDate = primeiro dia do mês).
 //
-// O saque ocorre sempre no dia 1 do mês de competência (movementDate =
-// primeiro dia do mês). O alvo reservado é limitado pelo saldo disponível
-// nesse dia. Para simular que as reservas sintéticas do backtest de fato
-// saíram da conta, a engine acumula internamente, por conta, quanto já foi
-// "reservado" e calcula o saldo disponível:
-//
-//	available = realBalance(account, movementDate) - reserved[account]
-//
-// Assim uma reserva que sucede num mês reduz o disponível dos meses seguintes,
-// sem que a BalanceFn precise saber do backtest. Se o disponível for menor que
-// o alvo, reserva-se o que houver (PARTIAL); se for <= 0, falha
-// (FAILED_INSUFFICIENT_BALANCE).
-//
-// A movimentação NÃO tenta cobrir a falha de uma conta com outra (RF-05): cada
-// alocação é avaliada isoladamente.
+// Cada alocação é avaliada isoladamente (RF-05).
 package backtest
 
 import (
@@ -34,10 +23,8 @@ import (
 
 // Status possíveis de um movimento.
 const (
-	StatusCompleted = "COMPLETED"
-	StatusPartial   = "PARTIAL"           // reservou menos que o alvo (saldo limitou)
+	StatusCompleted = "COMPLETED"         // reservou a fatia da evolução do mês
 	StatusSkipped   = "SKIPPED_NO_GROWTH" // conta não evoluiu no mês
-	StatusFailed    = "FAILED_INSUFFICIENT_BALANCE"
 )
 
 // Allocation é uma alocação de conta: o percentual é a fatia da evolução
@@ -60,8 +47,8 @@ type Movement struct {
 	ReferenceMonth time.Time       // primeiro dia do mês de competência
 	MovementDate   time.Time       // data efetiva (sempre o dia 1 do mês de competência)
 	AccountID      string          // conta-fonte
-	Amount         decimal.Decimal // valor reservado (0 em SKIPPED/FAILED)
-	Status         string          // StatusCompleted | StatusPartial | StatusSkipped | StatusFailed
+	Amount         decimal.Decimal // valor reservado (0 em SKIPPED)
+	Status         string          // StatusCompleted | StatusSkipped
 }
 
 // BalanceFn devolve o saldo histórico real de uma conta numa data.
@@ -70,7 +57,6 @@ type BalanceFn func(ctx context.Context, accountID string, atDate time.Time) (de
 // Run executa o backtest e devolve a sequência de movimentos, na ordem
 // (mês, alocação).
 func Run(ctx context.Context, plan Plan, balance BalanceFn) ([]Movement, error) {
-	reserved := make(map[string]decimal.Decimal) // acumulado reservado por conta
 	movements := make([]Movement, 0, plan.DurationMonths*len(plan.Allocations))
 
 	for i := 0; i < plan.DurationMonths; i++ {
@@ -119,23 +105,10 @@ func Run(ctx context.Context, plan Plan, balance BalanceFn) ([]Movement, error) 
 				continue
 			}
 
-			// movementDate == monthOpen (dia 1), logo o saldo no dia do saque é o
-			// próprio openBal já consultado.
-			available := openBal.Sub(reserved[alloc.AccountID])
-
-			switch {
-			case available.LessThanOrEqual(decimal.Zero):
-				mv.Status = StatusFailed
-				mv.Amount = decimal.Zero
-			case available.GreaterThanOrEqual(target):
-				mv.Status = StatusCompleted
-				mv.Amount = target
-				reserved[alloc.AccountID] = reserved[alloc.AccountID].Add(target)
-			default:
-				mv.Status = StatusPartial
-				mv.Amount = available.Round(2)
-				reserved[alloc.AccountID] = reserved[alloc.AccountID].Add(mv.Amount)
-			}
+			// A fatia reservada é parte do próprio crescimento do mês, logo é
+			// sempre reservada por inteiro.
+			mv.Status = StatusCompleted
+			mv.Amount = target
 			movements = append(movements, mv)
 		}
 	}

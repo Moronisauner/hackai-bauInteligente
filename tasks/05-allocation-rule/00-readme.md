@@ -7,10 +7,9 @@ a meta.
 
 Consequências que estas tasks implementam:
 
-- Reserva mensal = `min(evolução_positiva × %, saldo disponível no dia do saque)`.
+- Reserva mensal = `evolução_positiva × %` (fatia da evolução do mês, reservada por inteiro).
 - Percentuais **independentes por conta** — não somam mais 100%.
-- 4 status de movimento: `COMPLETED`, `PARTIAL`, `SKIPPED_NO_GROWTH`,
-  `FAILED_INSUFFICIENT_BALANCE`.
+- 2 status de movimento: `COMPLETED` (conta evoluiu) e `SKIPPED_NO_GROWTH` (não evoluiu).
 - Some o "valor mensal" fixo projetado na criação (não é mais projetável).
 
 Rodar **em ordem** (DB → engine → testes → validação → handlers → frontend).

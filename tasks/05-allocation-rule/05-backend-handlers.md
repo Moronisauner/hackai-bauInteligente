@@ -12,8 +12,8 @@ novos status no resumo do backtest.
    - `loadGoalPlan`: parar de calcular `perMonth`/`MonthlyAmount`; montar cada
      `backtest.Allocation` só com `AccountID` e `Percentage`.
    - `buildResult`:
-     - `vaultBal += mv.Amount` para **todos** os movimentos (skip/fail têm `Amount = 0`),
-       o que já soma corretamente `COMPLETED` + `PARTIAL`.
+     - `vaultBal += mv.Amount` para **todos** os movimentos (skip tem `Amount = 0`),
+       o que já soma corretamente os `COMPLETED`.
      - `completed` conta apenas `StatusCompleted`; `failed = total - completed`.
      - `worst_account` = maior taxa de **não-`COMPLETED`** por conta.
      - `goal_reached = vaultBal >= target` (inalterado).
@@ -29,7 +29,7 @@ novos status no resumo do backtest.
 - [ ] `go build ./...` e `go test ./...` ok.
 - [ ] `GET /goals/{id}` não retorna mais `monthly_amount` nas alocações.
 - [ ] `POST /goals/{id}/backtest` retorna movimentos com os novos status e
-      `vault_balance` coerente (= soma de COMPLETED + PARTIAL).
+      `vault_balance` coerente (= soma dos COMPLETED).
 
 ## Referências PRD
 - RF-04, RF-05, RF-06

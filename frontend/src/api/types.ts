@@ -72,9 +72,7 @@ export type GoalDraft = {
 
 export type BacktestMovementStatus =
   | 'COMPLETED'
-  | 'PARTIAL'
   | 'SKIPPED_NO_GROWTH'
-  | 'FAILED_INSUFFICIENT_BALANCE'
 
 export type BacktestResult = {
   summary: {

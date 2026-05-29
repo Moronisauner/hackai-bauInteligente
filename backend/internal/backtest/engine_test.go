@@ -12,12 +12,11 @@ func dec(s string) decimal.Decimal { return decimal.RequireFromString(s) }
 
 // phasedBalance constrói uma BalanceFn a partir do saldo de cada conta nos dois
 // instantes que a engine consulta a cada mês:
-//   - [0] open  = primeiro instante do mês (dia 1, 00:00:00.000000000); como o
-//     saque ocorre sempre no dia 1, este é também o saldo no dia do saque.
+//   - [0] open  = primeiro instante do mês (dia 1, 00:00:00.000000000)
 //   - [1] close = último instante do mês (…23:59:59.999999999, Nanosecond != 0)
 //
 // O saldo independe do mês de competência, o que basta para exercitar a regra
-// (evolução → fatia → limite do disponível) e a acumulação entre meses.
+// (evolução → fatia da evolução).
 func phasedBalance(byAccount map[string][2]string) BalanceFn {
 	return func(_ context.Context, accountID string, at time.Time) (decimal.Decimal, error) {
 		v := byAccount[accountID]
@@ -33,9 +32,8 @@ func TestRun(t *testing.T) {
 	ctx := context.Background()
 	start := time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)
 
-	t.Run("evolução positiva, saldo sobra → COMPLETED", func(t *testing.T) {
-		// open 5000 → close 6000: evolução 1000; pct 50 → alvo 500; disponível
-		// (= saldo de abertura, pois o saque é no dia 1) 5000.
+	t.Run("evolução positiva → COMPLETED com a fatia da evolução", func(t *testing.T) {
+		// open 5000 → close 6000: evolução 1000; pct 50 → reserva 500.
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 1,
@@ -90,32 +88,9 @@ func TestRun(t *testing.T) {
 		}
 	})
 
-	t.Run("evolução positiva, saldo no dia do saque < alvo → PARTIAL", func(t *testing.T) {
-		// open 300 → close 1300: evolução 1000; pct 100 → alvo 1000; disponível
-		// (= saldo de abertura) só 300.
-		plan := Plan{
-			StartDate:      start,
-			DurationMonths: 1,
-			TargetAmount:   dec("10000"),
-			Allocations:    []Allocation{{AccountID: "A", Percentage: 100}},
-		}
-		got, err := Run(ctx, plan, phasedBalance(map[string][2]string{
-			"A": {"300", "1300"},
-		}))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got[0].Status != StatusPartial {
-			t.Errorf("expected PARTIAL, got %s", got[0].Status)
-		}
-		if !got[0].Amount.Equal(dec("300")) {
-			t.Errorf("expected amount 300, got %s", got[0].Amount)
-		}
-	})
-
-	t.Run("evolução positiva, disponível <= 0 → FAILED_INSUFFICIENT_BALANCE", func(t *testing.T) {
-		// open 0 → close 1000: evolução 1000; pct 100 → alvo 1000; disponível
-		// (= saldo de abertura) 0.
+	t.Run("saldo de abertura baixo não limita a reserva → COMPLETED", func(t *testing.T) {
+		// open 0 → close 1000: evolução 1000; pct 100 → reserva 1000. Mesmo com
+		// saldo de abertura 0, a fatia da evolução é reservada por inteiro.
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 1,
@@ -128,20 +103,16 @@ func TestRun(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got[0].Status != StatusFailed {
-			t.Errorf("expected FAILED, got %s", got[0].Status)
+		if got[0].Status != StatusCompleted {
+			t.Errorf("expected COMPLETED, got %s", got[0].Status)
 		}
-		if !got[0].Amount.Equal(decimal.Zero) {
-			t.Errorf("expected amount 0, got %s", got[0].Amount)
+		if !got[0].Amount.Equal(dec("1000")) {
+			t.Errorf("expected amount 1000, got %s", got[0].Amount)
 		}
 	})
 
-	t.Run("acumulação entre meses: reservas anteriores reduzem o disponível", func(t *testing.T) {
-		// 1 conta, pct 100, 3 meses. Cada mês: evolução 1000 (alvo 1000).
-		// Saldo de abertura (= dia do saque) constante 2500.
-		//   mês 0: disp 2500 >= 1000 → COMPLETED (reservado 1000)
-		//   mês 1: disp 2500-1000=1500 >= 1000 → COMPLETED (reservado 2000)
-		//   mês 2: disp 2500-2000=500 < 1000 → PARTIAL (amount 500)
+	t.Run("vários meses com evolução → todos COMPLETED", func(t *testing.T) {
+		// 1 conta, pct 100, 3 meses. Cada mês: evolução 1000 → reserva 1000.
 		plan := Plan{
 			StartDate:      start,
 			DurationMonths: 3,
@@ -154,14 +125,15 @@ func TestRun(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		wantStatus := []string{StatusCompleted, StatusCompleted, StatusPartial}
-		wantAmount := []string{"1000", "1000", "500"}
+		if len(got) != 3 {
+			t.Fatalf("expected 3 movements, got %d", len(got))
+		}
 		for i, mv := range got {
-			if mv.Status != wantStatus[i] {
-				t.Errorf("mês %d: esperado %s, got %s", i, wantStatus[i], mv.Status)
+			if mv.Status != StatusCompleted {
+				t.Errorf("mês %d: esperado COMPLETED, got %s", i, mv.Status)
 			}
-			if !mv.Amount.Equal(dec(wantAmount[i])) {
-				t.Errorf("mês %d: esperado amount %s, got %s", i, wantAmount[i], mv.Amount)
+			if !mv.Amount.Equal(dec("1000")) {
+				t.Errorf("mês %d: esperado amount 1000, got %s", i, mv.Amount)
 			}
 		}
 	})

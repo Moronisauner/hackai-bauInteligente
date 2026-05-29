@@ -203,9 +203,7 @@ const STATUS_STYLE: Record<
   { icon: string; color: string; label: string }
 > = {
   COMPLETED: { icon: '✅', color: 'text-green-600', label: 'Reserva cheia' },
-  PARTIAL: { icon: '⚠️', color: 'text-amber-600', label: 'Parcial (saldo limitou)' },
   SKIPPED_NO_GROWTH: { icon: '➖', color: 'text-slate-400', label: 'Sem evolução' },
-  FAILED_INSUFFICIENT_BALANCE: { icon: '❌', color: 'text-red-600', label: 'Sem saldo' },
 }
 
 function MonthlyTable({
@@ -264,7 +262,7 @@ function MonthlyTable({
                 {accountIDs.map((id) => {
                   const c = cell.get(`${month}|${id}`)
                   if (!c) return <td key={id} className="px-3 py-2 text-slate-300">—</td>
-                  const s = STATUS_STYLE[c.status as BacktestMovementStatus] ?? STATUS_STYLE.FAILED_INSUFFICIENT_BALANCE
+                  const s = STATUS_STYLE[c.status as BacktestMovementStatus] ?? STATUS_STYLE.SKIPPED_NO_GROWTH
                   return (
                     <td key={id} className="px-3 py-2 whitespace-nowrap">
                       <span className={s.color} title={s.label}>

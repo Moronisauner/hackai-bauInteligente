@@ -11,25 +11,21 @@ cada conta, em vez de um valor mensal fixo.
 1. Em `internal/backtest/engine.go`:
    - `Allocation`: **remover** `MonthlyAmount`; manter `AccountID` e `Percentage`
      (o percentual agora é a fatia da evolução da conta).
-   - Constantes de status: adicionar
+   - Constantes de status: manter apenas
      ```go
-     StatusPartial = "PARTIAL"             // reservou menos que o alvo (saldo limitou)
-     StatusSkipped = "SKIPPED_NO_GROWTH"   // conta não evoluiu no mês
+     StatusCompleted = "COMPLETED"          // reservou a fatia da evolução do mês
+     StatusSkipped   = "SKIPPED_NO_GROWTH"  // conta não evoluiu no mês
      ```
-     manter `StatusCompleted` e `StatusFailed`.
 2. Em `Run`, para cada mês `i` e cada `Allocation`:
    - `monthOpen` = primeiro instante do mês de competência (`referenceMonth`, 00:00:00).
    - `monthClose` = último instante do mês = `referenceMonth.AddDate(0,1,0).Add(-time.Nanosecond)`.
    - `evolution = balance(close) - balance(open)`.
    - Se `evolution <= 0` → `StatusSkipped`, `Amount = 0`.
    - `target = round(evolution * Percentage / 100, 2)`; se `target <= 0` → `StatusSkipped`.
-   - `available = balance(movementDate) - reserved[accountID]` (reservas anteriores
-     do backtest descontam o disponível — manter o acumulador interno).
-     - `available <= 0` → `StatusFailed`, `Amount = 0`.
-     - `available >= target` → `StatusCompleted`, `Amount = target`, soma em `reserved`.
-     - senão → `StatusPartial`, `Amount = round(available, 2)`, soma em `reserved`.
-3. Atualizar o doc-comment do topo do arquivo descrevendo a nova regra
-   (evolução → fatia → limite do disponível) e o acumulador `reserved`.
+   - Senão → `StatusCompleted`, `Amount = target`. A fatia é parte do próprio
+     crescimento do mês, logo é sempre reservada por inteiro (sem limite por saldo).
+3. Atualizar o doc-comment do topo do arquivo descrevendo a regra
+   (evolução → fatia da evolução, sempre reservada por inteiro).
 
 ## Critério de aceite
 - [ ] `go build ./internal/backtest/...` ok.

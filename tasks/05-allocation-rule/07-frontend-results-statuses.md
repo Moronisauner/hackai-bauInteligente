@@ -1,7 +1,7 @@
-# 05-allocation-rule/07 — Frontend: 4 status na tabela de resultados
+# 05-allocation-rule/07 — Frontend: status na tabela de resultados
 
 ## Objetivo
-Distinguir cheio / parcial / sem evolução / sem saldo na tabela mês a mês do backtest.
+Distinguir cheio / sem evolução na tabela mês a mês do backtest.
 
 ## Pré-requisitos
 - 05-allocation-rule/05
@@ -12,14 +12,12 @@ Distinguir cheio / parcial / sem evolução / sem saldo na tabela mês a mês do
    - Substituir o booleano `ok = status === 'COMPLETED'` por um mapa de
      status → { ícone, cor, label }:
      - `COMPLETED` → ✅ verde
-     - `PARTIAL` → ⚠️ âmbar (mostrar valor reservado)
      - `SKIPPED_NO_GROWTH` → ➖ cinza ("sem evolução")
-     - `FAILED_INSUFFICIENT_BALANCE` → ❌ vermelho
    - Manter o valor formatado em BRL ao lado.
 2. Se houver legenda/KPIs que assumam binário, ajustar o texto.
 
 ## Critério de aceite
-- [ ] Rodar um backtest que produza os quatro status e ver cada um renderizado de
+- [ ] Rodar um backtest que produza os dois status e ver cada um renderizado de
       forma distinta (cor + ícone).
 - [ ] `npm run build` sem erros.
 

@@ -9,7 +9,7 @@ Refletir na UI que o % é a fatia da evolução mensal da conta — sem exigir s
 
 ## Passos
 1. `src/api/types.ts`:
-   - `BacktestMovementStatus`: adicionar `'PARTIAL'` e `'SKIPPED_NO_GROWTH'`.
+   - `BacktestMovementStatus`: `'COMPLETED' | 'SKIPPED_NO_GROWTH'`.
    - `Allocation`: remover `monthly_amount`.
 2. `src/pages/AllocationFormPage.tsx`:
    - Remover a regra `totalPct === 100`. `canSubmit` = ao menos 1 conta marcada,

@@ -31,10 +31,10 @@ CREATE TABLE goal_vault_movements (
     reference_month   DATE NOT NULL,
     movement_date     DATE NOT NULL,
     amount            NUMERIC(18, 2) NOT NULL,
-    -- Status do movimento: COMPLETED (reservou o alvo), PARTIAL (saldo limitou),
-    -- SKIPPED_NO_GROWTH (conta não evoluiu no mês), FAILED_INSUFFICIENT_BALANCE
-    -- (sem saldo disponível). 'FAILED_INSUFFICIENT_BALANCE' tem 27 chars; VARCHAR(40) dá folga.
-    status            VARCHAR(40) NOT NULL CHECK (status IN ('COMPLETED', 'PARTIAL', 'SKIPPED_NO_GROWTH', 'FAILED_INSUFFICIENT_BALANCE')),
+    -- Status do movimento: COMPLETED (reservou a fatia da evolução do mês),
+    -- SKIPPED_NO_GROWTH (conta não evoluiu no mês).
+    -- 'SKIPPED_NO_GROWTH' tem 17 chars; VARCHAR(40) dá folga.
+    status            VARCHAR(40) NOT NULL CHECK (status IN ('COMPLETED', 'SKIPPED_NO_GROWTH')),
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

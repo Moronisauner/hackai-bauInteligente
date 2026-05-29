@@ -249,8 +249,8 @@ func buildResult(target decimal.Decimal, movements []backtest.Movement) Backtest
 		}
 
 		totalByAcc[mv.AccountID]++
-		// vaultBal soma o valor de TODOS os movimentos; skip/fail têm Amount = 0,
-		// logo o saldo é a soma de COMPLETED + PARTIAL.
+		// vaultBal soma o valor de TODOS os movimentos; SKIPPED tem Amount = 0,
+		// logo o saldo é a soma dos COMPLETED.
 		vaultBal = vaultBal.Add(mv.Amount)
 		if mv.Status == backtest.StatusCompleted {
 			completed++

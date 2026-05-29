@@ -38,7 +38,7 @@ Responder a três perguntas:
 5. **Distribuir percentuais** — para cada conta-fonte selecionada, usuário define o **% de contribuição da conta**: quanto da *evolução mensal* daquela conta (o quanto o saldo cresceu no mês — entradas menos saídas) será reservado para a meta. Os percentuais são **independentes por conta e não precisam somar 100%**. Como o valor reservado depende de quanto a conta crescer em cada mês, **não há um valor mensal fixo** definido na criação — a projeção só existe após o backtest.
 6. **Resumo + simulação histórica** — sistema mostra:
    - Plano consolidado (qual valor sai de qual conta, em qual dia do mês, todos com destino à conta baú)
-   - **Backtest mês a mês** rodando contra o histórico real do cliente: em cada mês mede-se **quanto cada conta-fonte evoluiu** (entradas − saídas do mês) e reserva-se o percentual definido sobre essa evolução, limitado ao saldo disponível no dia do saque. Quantos meses teriam reservado o valor cheio, quantos parcialmente, e quantos nada (conta sem evolução ou sem saldo disponível)?
+   - **Backtest mês a mês** rodando contra o histórico real do cliente: em cada mês mede-se **quanto cada conta-fonte evoluiu** (entradas − saídas do mês) e reserva-se o percentual definido sobre essa evolução. Quantos meses teriam reservado (conta evoluiu) e quantos nada (conta sem evolução no mês)?
    - **Evolução da conta baú**: saldo acumulado mês a mês, mostrando a trajetória até a meta.
    - Indicador final: meta seria atingida? Quanto teria sido acumulado no baú ao fim do prazo?
 
@@ -77,17 +77,13 @@ Ambos os saldos via §6. "Abertura" = primeiro instante do mês de competência;
 Para cada mês `m` do plano, para cada conta-fonte:
 1. Calcular a evolução do mês.
 2. Se `evolução <= 0` → **`SKIPPED_NO_GROWTH`**: a conta não cresceu no mês, nada é reservado (`amount = 0`).
-3. Senão, `reserva_alvo = round(evolução × percentual / 100, 2)`.
-4. Calcular o **saldo disponível no dia do saque** = `saldo(conta, movement_date)` (= saldo na abertura do mês, pois o saque é no dia 1) − reservas já feitas por essa conta nos meses anteriores do backtest (o débito sintético reduz o disponível dos meses seguintes). Então:
-   - `disponível <= 0` → **`FAILED_INSUFFICIENT_BALANCE`**: a conta evoluiu mas não há saldo disponível; reserva 0.
-   - `disponível >= reserva_alvo` → **`COMPLETED`**: reserva o alvo cheio.
-   - `0 < disponível < reserva_alvo` → **`PARTIAL`**: reserva apenas o disponível (nunca move mais do que há na conta).
-5. O valor reservado vira **crédito na conta baú** (`goal_vault_movements`). Não tenta cobrir a falha de uma conta com outra (cada alocação é avaliada isoladamente).
+3. Senão → **`COMPLETED`**: reserva `round(evolução × percentual / 100, 2)`. Como a fatia reservada é parte do próprio crescimento do mês, é sempre reservada por inteiro. (Se o arredondamento der 0, `SKIPPED_NO_GROWTH`.)
+4. O valor reservado vira **crédito na conta baú** (`goal_vault_movements`). Cada alocação é avaliada isoladamente.
 - Resultado armazenado: array de movimentos `{ mes, conta_fonte_id, vault_id, status, valor_reservado }`.
 
 ### RF-06 — Visualização do resultado
 - KPIs: **% de meses cumpridos** (status `COMPLETED` sobre o total), **saldo final do baú vs. meta**, conta-fonte com maior taxa de não-cumprimento.
-- Tabela detalhada mês a mês: para cada mês, status por conta-fonte (cheio / parcial / sem evolução / sem saldo) + valor reservado + saldo acumulado do baú ao final daquele mês.
+- Tabela detalhada mês a mês: para cada mês, status por conta-fonte (cheio / sem evolução) + valor reservado + saldo acumulado do baú ao final daquele mês.
 - Gráfico de evolução do saldo do baú no tempo (linha simples).
 
 ## 6. Cálculo de saldo (decisão crítica)
@@ -151,7 +147,7 @@ CREATE TABLE goal_vault_movements (
     reference_month   DATE NOT NULL,         -- mês de competência (primeiro dia)
     movement_date     DATE NOT NULL,         -- data efetiva do saque simulado (sempre o dia 1)
     amount            NUMERIC(18, 2) NOT NULL,
-    -- COMPLETED | PARTIAL | SKIPPED_NO_GROWTH | FAILED_INSUFFICIENT_BALANCE
+    -- COMPLETED | SKIPPED_NO_GROWTH
     status            VARCHAR(40) NOT NULL,
     created_at        TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -160,7 +156,7 @@ CREATE INDEX idx_goal_vault_movements_vault_id ON goal_vault_movements(vault_id)
 CREATE INDEX idx_goal_vault_movements_ref_month ON goal_vault_movements(reference_month);
 ```
 
-> Nota: movimentos `SKIPPED_NO_GROWTH` (conta não evoluiu) e `FAILED_INSUFFICIENT_BALANCE` (evoluiu mas sem saldo disponível) são persistidos com `amount = 0` para manter o histórico de tentativas. `PARTIAL` guarda o valor efetivamente reservado (menor que o alvo). O saldo do baú = `SUM(amount)`, ou seja, soma de `COMPLETED` + `PARTIAL`.
+> Nota: movimentos `SKIPPED_NO_GROWTH` (conta não evoluiu) são persistidos com `amount = 0` para manter o histórico de tentativas. `COMPLETED` guarda a fatia reservada da evolução do mês. O saldo do baú = `SUM(amount)`, ou seja, a soma dos `COMPLETED`.
 
 ## 8. Tratamento de datas (atenção redobrada)
 
@@ -191,7 +187,7 @@ Como a massa é histórica, **a aplicação não pode usar `NOW()` como referên
 - **Múltiplas moedas:** schema permite, mas a POC assume `BRL`. Filtrar `currency = 'BRL'`?
 - **Dia do saque:** o saque ocorre sempre no **dia 1** do mês de competência — não é mais configurável.
 - **Granularidade do percentual:** inteiro (1–100) é suficiente, ou precisamos de uma casa decimal?
-- **Janela da evolução mensal (RF-05):** medimos a evolução pelo mês-calendário cheio (saldo do fim − saldo da abertura do mês de competência). O saque/reserva ocorre no dia 1 e é limitado ao saldo disponível nesse dia (= saldo na abertura do mês).
+- **Janela da evolução mensal (RF-05):** medimos a evolução pelo mês-calendário cheio (saldo do fim − saldo da abertura do mês de competência) e reservamos a fatia (percentual) dessa evolução. Como a fatia é parte do próprio crescimento do mês, ela é sempre reservada por inteiro — não há limite por saldo disponível.
 - **Múltiplos objetivos por cliente:** suportado pelo schema, mas a UI da POC pode focar em um objetivo de cada vez para simplificar.
 
 ## 12. Próximos passos

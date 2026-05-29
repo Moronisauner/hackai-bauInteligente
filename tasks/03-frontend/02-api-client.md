@@ -45,7 +45,7 @@ Centralizar chamadas ao backend em um cliente tipado, evitando `fetch` espalhado
        goal_reached: boolean;
        worst_account_id: string | null;
      };
-     movements: { reference_month: string; account_id: string; status: 'COMPLETED' | 'FAILED_INSUFFICIENT_BALANCE'; amount: string }[];
+     movements: { reference_month: string; account_id: string; status: 'COMPLETED' | 'SKIPPED_NO_GROWTH'; amount: string }[];
      vault_evolution: { month: string; balance: string }[];
    };
    ```
