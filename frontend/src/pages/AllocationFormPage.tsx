@@ -52,19 +52,18 @@ export function AllocationFormPage() {
     }
   }, [userID])
 
-  const monthlyTotal = draft ? Number(draft.target_amount) / draft.duration_months : 0
-
-  const totalPct = useMemo(
-    () =>
-      Object.values(rows).reduce(
-        (sum, r) => sum + (r.selected ? Number(r.percentage) || 0 : 0),
-        0,
-      ),
+  const selectedRows = useMemo(
+    () => Object.values(rows).filter((r) => r.selected),
     [rows],
   )
-
-  const anySelected = Object.values(rows).some((r) => r.selected)
-  const canSubmit = anySelected && totalPct === 100 && !submitting
+  const selectedCount = selectedRows.length
+  // Cada conta marcada precisa de um percentual válido (1–100). As alocações são
+  // independentes e NÃO precisam somar 100%.
+  const allPctValid = selectedRows.every((r) => {
+    const pct = Number(r.percentage)
+    return Number.isInteger(pct) && pct >= 1 && pct <= 100
+  })
+  const canSubmit = selectedCount > 0 && allPctValid && !submitting
 
   function toggle(accountID: string, selected: boolean) {
     setRows((prev) => ({
@@ -106,8 +105,9 @@ export function AllocationFormPage() {
       title="Novo objetivo"
       subtitle={
         <>
-          Etapa 2 de 2 · Contas-fonte e alocação · meta {formatBRL(draft.target_amount)} em{' '}
-          {draft.duration_months} meses
+          Etapa 2 de 2 · meta {formatBRL(draft.target_amount)} em {draft.duration_months} meses ·
+          o % é a fatia da evolução mensal de cada conta (quanto do que ela crescer no mês vai pra
+          meta) — contas são independentes e não precisam somar 100%
         </>
       }
     >
@@ -127,15 +127,12 @@ export function AllocationFormPage() {
                   <th className="px-4 py-3 w-12"></th>
                   <th className="px-4 py-3">Conta</th>
                   <th className="px-4 py-3 text-right">Saldo</th>
-                  <th className="px-4 py-3 w-28 text-right">%</th>
-                  <th className="px-4 py-3 text-right">Valor mensal</th>
+                  <th className="px-4 py-3 w-40 text-right">% da evolução mensal</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {accounts.map((a) => {
                   const row = rows[a.account_id]
-                  const pct = row.selected ? Number(row.percentage) || 0 : 0
-                  const monthly = (monthlyTotal * pct) / 100
                   return (
                     <tr key={a.account_id} className={row.selected ? 'bg-indigo-50/40' : ''}>
                       <td className="px-4 py-3">
@@ -166,9 +163,6 @@ export function AllocationFormPage() {
                           className="w-20 rounded-md border border-slate-300 px-2 py-1 text-right text-sm shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 disabled:bg-slate-100 disabled:text-slate-400"
                         />
                       </td>
-                      <td className="px-4 py-3 text-right font-medium text-slate-800">
-                        {row.selected ? formatBRL(monthly) : '—'}
-                      </td>
                     </tr>
                   )
                 })}
@@ -176,19 +170,11 @@ export function AllocationFormPage() {
             </table>
           </div>
 
-          <div
-            className={[
-              'sticky bottom-0 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border bg-white px-4 py-3 shadow-sm',
-              totalPct === 100 ? 'border-green-300' : 'border-red-300',
-            ].join(' ')}
-          >
-            <span
-              className={[
-                'text-sm font-semibold',
-                totalPct === 100 ? 'text-green-700' : 'text-red-600',
-              ].join(' ')}
-            >
-              Soma atual: {totalPct}% / 100%
+          <div className="sticky bottom-0 mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <span className="text-sm font-medium text-slate-600">
+              {selectedCount === 0
+                ? 'Nenhuma conta selecionada'
+                : `${selectedCount} ${selectedCount === 1 ? 'conta selecionada' : 'contas selecionadas'}`}
             </span>
             <div className="flex gap-2">
               <Button

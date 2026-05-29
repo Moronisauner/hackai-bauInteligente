@@ -25,14 +25,13 @@ export type Account = {
 }
 
 // Alocação como volta no detalhe do objetivo (GoalAllocationDTO), enriquecida
-// com dados da conta-fonte e o valor mensal calculado.
+// com dados da conta-fonte. O percentual é a fatia da evolução mensal da conta.
 export type Allocation = {
   account_id: string
   percentage: number
   brand_name?: string
   number?: string
   type?: string
-  monthly_amount?: string
 }
 
 // Detalhe de um objetivo (GoalDTO). Observação: o backend usa `goal_id`.
@@ -74,7 +73,11 @@ export type GoalDraft = {
   withdrawal_day: number
 }
 
-export type BacktestMovementStatus = 'COMPLETED' | 'FAILED_INSUFFICIENT_BALANCE'
+export type BacktestMovementStatus =
+  | 'COMPLETED'
+  | 'PARTIAL'
+  | 'SKIPPED_NO_GROWTH'
+  | 'FAILED_INSUFFICIENT_BALANCE'
 
 export type BacktestResult = {
   summary: {

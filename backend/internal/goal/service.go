@@ -124,7 +124,8 @@ func validate(in CreateInput) error {
 	if len(in.Allocations) < 1 {
 		return validationf("at least one allocation is required")
 	}
-	sum := 0
+	// O percentual é a fatia da evolução mensal de cada conta (RF-04); as
+	// alocações são independentes e NÃO precisam somar 100%.
 	for _, a := range in.Allocations {
 		if a.AccountID == "" {
 			return validationf("allocation account_id is required")
@@ -132,10 +133,6 @@ func validate(in CreateInput) error {
 		if a.Percentage < 1 || a.Percentage > 100 {
 			return validationf("each allocation percentage must be between 1 and 100")
 		}
-		sum += a.Percentage
-	}
-	if sum != 100 {
-		return validationf("allocations must sum to 100")
 	}
 	return nil
 }

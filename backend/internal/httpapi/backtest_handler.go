@@ -77,18 +77,15 @@ func (s *Server) loadGoalPlan(ctx context.Context, goalID string) (goalPlan, err
 	}
 	defer rows.Close()
 
-	perMonth := gp.target.Div(decimal.NewFromInt(int64(gp.duration)))
 	for rows.Next() {
 		var accountID string
 		var pct int
 		if err := rows.Scan(&accountID, &pct); err != nil {
 			return goalPlan{}, err
 		}
-		monthly := perMonth.Mul(decimal.NewFromInt(int64(pct))).Div(decimal.NewFromInt(100)).Round(2)
 		gp.allocations = append(gp.allocations, backtest.Allocation{
-			AccountID:     accountID,
-			Percentage:    pct,
-			MonthlyAmount: monthly,
+			AccountID:  accountID,
+			Percentage: pct,
 		})
 	}
 	return gp, rows.Err()
@@ -254,9 +251,11 @@ func buildResult(target decimal.Decimal, movements []backtest.Movement) Backtest
 		}
 
 		totalByAcc[mv.AccountID]++
+		// vaultBal soma o valor de TODOS os movimentos; skip/fail têm Amount = 0,
+		// logo o saldo é a soma de COMPLETED + PARTIAL.
+		vaultBal = vaultBal.Add(mv.Amount)
 		if mv.Status == backtest.StatusCompleted {
 			completed++
-			vaultBal = vaultBal.Add(mv.Amount)
 		} else {
 			failByAcc[mv.AccountID]++
 		}
@@ -278,7 +277,7 @@ func buildResult(target decimal.Decimal, movements []backtest.Movement) Backtest
 		pct = float64(completed) / float64(total)
 	}
 
-	// worst_account = maior taxa de falha (RF-06).
+	// worst_account = maior taxa de movimentos não-COMPLETED por conta (RF-06).
 	worst := ""
 	worstRate := -1.0
 	for acc, tot := range totalByAcc {

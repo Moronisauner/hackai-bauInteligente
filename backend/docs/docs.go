@@ -552,10 +552,6 @@ const docTemplate = `{
                 "brand_name": {
                     "type": "string"
                 },
-                "monthly_amount": {
-                    "type": "string",
-                    "example": "416.67"
-                },
                 "number": {
                     "type": "string"
                 },

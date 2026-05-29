@@ -118,9 +118,6 @@ definitions:
         type: string
       brand_name:
         type: string
-      monthly_amount:
-        example: "416.67"
-        type: string
       number:
         type: string
       percentage:

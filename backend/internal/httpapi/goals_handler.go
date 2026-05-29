@@ -153,15 +153,15 @@ func (s *Server) ListGoalsByUser(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, out)
 }
 
-// GoalAllocationDTO é uma alocação enriquecida com dados da conta-fonte e o
-// valor mensal calculado (RF-04).
+// GoalAllocationDTO é uma alocação enriquecida com dados da conta-fonte. O
+// percentual é a fatia da evolução mensal da conta (RF-04) — não há mais valor
+// mensal fixo projetado.
 type GoalAllocationDTO struct {
-	AccountID     string `json:"account_id"`
-	Percentage    int    `json:"percentage"`
-	BrandName     string `json:"brand_name"`
-	Number        string `json:"number"`
-	Type          string `json:"type"`
-	MonthlyAmount string `json:"monthly_amount" example:"416.67"`
+	AccountID  string `json:"account_id"`
+	Percentage int    `json:"percentage"`
+	BrandName  string `json:"brand_name"`
+	Number     string `json:"number"`
+	Type       string `json:"type"`
 }
 
 // GoalDTO é o detalhe de um objetivo com alocações e vault.
@@ -178,7 +178,7 @@ type GoalDTO struct {
 }
 
 // GetGoal devolve o detalhe de um objetivo, com alocações (incluindo dados da
-// conta-fonte e monthly_amount) e o vault_id. 404 se não existir.
+// conta-fonte) e o vault_id. 404 se não existir.
 //
 //	@Summary	Detalhe de um objetivo
 //	@Tags		goals
@@ -216,10 +216,6 @@ func (s *Server) GetGoal(w http.ResponseWriter, r *http.Request) {
 	dto.TargetAmount = target.StringFixed(2)
 	dto.StartDate = startDate.Format("2006-01-02")
 
-	// monthly por alocação = round(target / duration * percentage / 100, 2)
-	durMonths := decimal.NewFromInt(int64(dto.DurationMonths))
-	perMonth := target.Div(durMonths) // valor mensal total
-
 	rows, err := s.pool.Query(ctx, `
 		SELECT ga.account_id, ga.percentage, ba.brand_name, ba.number, ba.type
 		FROM goal_allocations ga
@@ -245,8 +241,6 @@ func (s *Server) GetGoal(w http.ResponseWriter, r *http.Request) {
 		a.BrandName = deref(brand)
 		a.Number = deref(number)
 		a.Type = deref(accType)
-		monthly := perMonth.Mul(decimal.NewFromInt(int64(a.Percentage))).Div(decimal.NewFromInt(100))
-		a.MonthlyAmount = monthly.Round(2).StringFixed(2)
 		dto.Allocations = append(dto.Allocations, a)
 	}
 	if err := rows.Err(); err != nil {

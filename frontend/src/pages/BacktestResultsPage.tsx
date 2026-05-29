@@ -11,7 +11,7 @@ import {
   YAxis,
 } from 'recharts'
 import { HttpError, getBacktest, getGoal, runBacktest } from '../api/client'
-import type { BacktestResult, Goal } from '../api/types'
+import type { BacktestMovementStatus, BacktestResult, Goal } from '../api/types'
 import { formatBRL, formatMonthBR } from '../lib/format'
 import { Button, ErrorBanner, PageShell, Spinner } from '../components/ui'
 
@@ -137,7 +137,7 @@ function KpiCards({
         </span>
       </div>
       <Kpi
-        label="Conta com mais falhas"
+        label="Conta com pior aproveitamento"
         value={s.worst_account_id ? accountLabel(s.worst_account_id) : '—'}
       />
     </div>
@@ -197,6 +197,17 @@ function VaultChart({ result }: { result: BacktestResult }) {
   )
 }
 
+// Estilo de cada status na tabela mês a mês (RF-06).
+const STATUS_STYLE: Record<
+  BacktestMovementStatus,
+  { icon: string; color: string; label: string }
+> = {
+  COMPLETED: { icon: '✅', color: 'text-green-600', label: 'Reserva cheia' },
+  PARTIAL: { icon: '⚠️', color: 'text-amber-600', label: 'Parcial (saldo limitou)' },
+  SKIPPED_NO_GROWTH: { icon: '➖', color: 'text-slate-400', label: 'Sem evolução' },
+  FAILED_INSUFFICIENT_BALANCE: { icon: '❌', color: 'text-red-600', label: 'Sem saldo' },
+}
+
 function MonthlyTable({
   result,
   accountLabel,
@@ -223,7 +234,15 @@ function MonthlyTable({
 
   return (
     <section className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <h2 className="mb-4 text-sm font-semibold text-slate-700">Movimentos mês a mês</h2>
+      <h2 className="mb-3 text-sm font-semibold text-slate-700">Movimentos mês a mês</h2>
+      <div className="mb-4 flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-500">
+        {(Object.keys(STATUS_STYLE) as BacktestMovementStatus[]).map((k) => (
+          <span key={k} className="inline-flex items-center gap-1">
+            <span className={STATUS_STYLE[k].color}>{STATUS_STYLE[k].icon}</span>
+            {STATUS_STYLE[k].label}
+          </span>
+        ))}
+      </div>
       <div className="overflow-x-auto">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="text-left text-xs font-semibold uppercase tracking-wide text-slate-500">
@@ -245,11 +264,11 @@ function MonthlyTable({
                 {accountIDs.map((id) => {
                   const c = cell.get(`${month}|${id}`)
                   if (!c) return <td key={id} className="px-3 py-2 text-slate-300">—</td>
-                  const ok = c.status === 'COMPLETED'
+                  const s = STATUS_STYLE[c.status as BacktestMovementStatus] ?? STATUS_STYLE.FAILED_INSUFFICIENT_BALANCE
                   return (
                     <td key={id} className="px-3 py-2 whitespace-nowrap">
-                      <span className={ok ? 'text-green-600' : 'text-red-600'}>
-                        {ok ? '✅' : '❌'} {formatBRL(c.amount)}
+                      <span className={s.color} title={s.label}>
+                        {s.icon} {formatBRL(c.amount)}
                       </span>
                     </td>
                   )
